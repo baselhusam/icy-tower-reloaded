@@ -10,6 +10,9 @@
   --mint: #8dffcf;
   --game-w: 480px;
   --game-h: 720px;
+  /* Safe-area insets, read by the renderer to keep the HUD clear of notches. */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
 }
 
 * {
@@ -40,6 +43,23 @@ canvas {
   display: block;
   border-radius: 6px;
   box-shadow: 0 0 60px rgba(127, 227, 255, 0.15);
+}
+/* Canvas fills the screen (phones): drop the framed look and respect the notch / home indicator. */
+.fullbleed canvas,
+.fullbleed #menu.title {
+  border-radius: 0;
+  box-shadow: none;
+}
+.fullbleed #menu.title {
+  padding-top: calc(var(--sat) + var(--u) * 30);
+  padding-bottom: calc(var(--sab) + var(--u) * 14);
+}
+.fullbleed .pad {
+  bottom: calc(16px + var(--sab));
+}
+.fullbleed #toasts,
+.fullbleed #spectator {
+  top: calc(50% - var(--game-h) / 2 + 100px + var(--sat));
 }
 
 .hidden {

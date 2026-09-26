@@ -46,6 +46,12 @@ export interface Frame {
   hud: boolean;
 }
 
+// How much extra tower a tall screen may reveal above the playfield. Must stay below the engine's
+// generation lookahead (4 floors) so platforms never pop in on screen.
+const MAX_EXTRA_VIEW = 3.75 * C.FLOOR_GAP;
+// On even taller screens we zoom slightly and crop up to this much of each (purely decorative) wall.
+const MAX_WALL_CROP = 24;
+
 const PICKUP_STYLE: Record<PickupKind, { color: string; glyph: string }> = {
   gem: { color: '#7fe3ff', glyph: '' },
   rocket: { color: '#ff7a59', glyph: '🚀' },
@@ -67,11 +73,15 @@ export class Renderer {
   private snow: { x: number; y: number; s: number; d: number }[] = [];
   private lastZone = 0;
   private comboPulse = 0;
+  private viewH = C.VIEW_H; // rendered height in world units; >= the simulation's VIEW_H
+  private hudTop = 0;
+  private hudBottom = 0;
+  private cropL = 0; // world units of wall cropped off each side on very tall screens
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
     for (let i = 0; i < 70; i++) {
-      this.snow.push({ x: Math.random() * C.VIEW_W, y: Math.random() * C.VIEW_H, s: 0.5 + Math.random() * 2, d: Math.random() * 6.28 });
+      this.snow.push({ x: Math.random() * C.VIEW_W, y: Math.random() * (C.VIEW_H + MAX_EXTRA_VIEW), s: 0.5 + Math.random() * 2, d: Math.random() * 6.28 });
     }
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -79,16 +89,37 @@ export class Renderer {
 
   resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const scale = Math.min(window.innerWidth / C.VIEW_W, window.innerHeight / C.VIEW_H);
-    const w = Math.floor(C.VIEW_W * scale);
-    const h = Math.floor(C.VIEW_H * scale);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let scale = Math.min(vw / C.VIEW_W, vh / C.VIEW_H);
+    this.viewH = C.VIEW_H;
+    if (vh / scale > C.VIEW_H) {
+      // Screens taller than 2:3 (phones) show extra tower above the playfield instead of letterboxing.
+      // If that still isn't enough, zoom in a little and crop the decorative side walls.
+      // The simulation's view never changes, so gameplay and replays are identical on every device.
+      const maxH = C.VIEW_H + MAX_EXTRA_VIEW;
+      scale = Math.min(Math.max(vw / C.VIEW_W, vh / maxH), vw / (C.VIEW_W - 2 * MAX_WALL_CROP));
+      this.viewH = Math.min(maxH, vh / scale);
+    }
+    const w = Math.min(vw, Math.round(C.VIEW_W * scale));
+    const h = Math.round(this.viewH * scale);
+    const cropPx = (C.VIEW_W * scale - w) / 2;
+    this.cropL = cropPx / scale;
     this.canvas.style.width = `${w}px`;
     this.canvas.style.height = `${h}px`;
     this.canvas.width = Math.floor(w * dpr);
     this.canvas.height = Math.floor(h * dpr);
-    this.ctx.setTransform((w * dpr) / C.VIEW_W, 0, 0, (h * dpr) / C.VIEW_H, 0, 0);
-    document.documentElement.style.setProperty('--game-w', `${w}px`);
-    document.documentElement.style.setProperty('--game-h', `${h}px`);
+    const k = (h * dpr) / this.viewH;
+    this.ctx.setTransform(k, 0, 0, k, -cropPx * dpr, 0);
+    const root = document.documentElement;
+    root.style.setProperty('--game-w', `${w}px`);
+    root.style.setProperty('--game-h', `${h}px`);
+    root.classList.toggle('fullbleed', h >= vh - 2 && w >= vw - 2);
+    // Keep the HUD clear of notches / home indicators where the canvas touches the screen edge.
+    const css = getComputedStyle(root);
+    const gap = (vh - h) / 2;
+    this.hudTop = Math.max(0, parseFloat(css.getPropertyValue('--sat')) - gap || 0) / scale;
+    this.hudBottom = Math.max(0, parseFloat(css.getPropertyValue('--sab')) - gap || 0) / scale;
   }
 
   reset() {
@@ -175,7 +206,7 @@ export class Renderer {
   }
 
   private sy(cam: number, y: number) {
-    return C.VIEW_H - (y - cam);
+    return this.viewH - (y - cam);
   }
 
   private burst(x: number, y: number, n: number, color: string, speed: number, shape: Particle['shape']) {
@@ -216,7 +247,7 @@ export class Renderer {
     const cam = f.prevCam + (s.cameraY - f.prevCam) * f.alpha;
     const px = f.prevX + (s.player.x - f.prevX) * f.alpha;
     const py = f.prevY + (s.player.y - f.prevY) * f.alpha;
-    const viewFloor = (cam + C.VIEW_H / 2) / C.FLOOR_GAP;
+    const viewFloor = (cam + this.viewH / 2) / C.FLOOR_GAP;
     const theme = blend(viewFloor);
     const zone = themeAt(viewFloor).index;
     if (zone !== this.lastZone) this.lastZone = zone;
@@ -240,7 +271,7 @@ export class Renderer {
     if (s.freeze > 0) this.drawFreezeVignette(s.freeze);
     if (this.flash > 0.01) {
       ctx.fillStyle = `rgba(255,255,255,${this.flash})`;
-      ctx.fillRect(0, 0, C.VIEW_W, C.VIEW_H);
+      ctx.fillRect(0, 0, C.VIEW_W, this.viewH);
       this.flash *= 0.85;
     }
     if (f.hud) this.drawHud(s, f, theme);
@@ -250,11 +281,11 @@ export class Renderer {
 
   private drawBackground(t: Theme, cam: number) {
     const { ctx } = this;
-    const g = ctx.createLinearGradient(0, 0, 0, C.VIEW_H);
+    const g = ctx.createLinearGradient(0, 0, 0, this.viewH);
     g.addColorStop(0, t.skyTop);
     g.addColorStop(1, t.skyBottom);
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, C.VIEW_W, C.VIEW_H);
+    ctx.fillRect(0, 0, C.VIEW_W, this.viewH);
 
     // Parallax tower bricks.
     const par = cam * 0.45;
@@ -266,8 +297,8 @@ export class Renderer {
     ctx.lineWidth = 2;
     const off = ((par % bh) + bh) % bh;
     const rowBase = Math.floor(par / bh);
-    for (let r = -1; r < C.VIEW_H / bh + 2; r++) {
-      const y = C.VIEW_H - r * bh - bh + off;
+    for (let r = -1; r < this.viewH / bh + 2; r++) {
+      const y = this.viewH - r * bh - bh + off;
       const shift = (rowBase + r) % 2 === 0 ? 0 : bw / 2;
       for (let x = -bw + shift; x < C.VIEW_W + bw; x += bw) {
         ctx.fillRect(x + 2, y + 2, bw - 4, bh - 4);
@@ -281,7 +312,7 @@ export class Renderer {
     for (const f of this.snow) {
       f.y += f.s * 0.6;
       f.x += Math.sin((this.time + f.d * 50) / 60) * 0.3;
-      if (f.y > C.VIEW_H) {
+      if (f.y > this.viewH) {
         f.y = -4;
         f.x = Math.random() * C.VIEW_W;
       }
@@ -299,10 +330,10 @@ export class Renderer {
     const off = ((cam % bh) + bh) % bh;
     for (const x0 of [0, C.PLAY_R]) {
       ctx.fillStyle = t.wall;
-      ctx.fillRect(x0, 0, C.WALL, C.VIEW_H);
+      ctx.fillRect(x0, 0, C.WALL, this.viewH);
       ctx.strokeStyle = t.wallLine;
       ctx.lineWidth = 3;
-      for (let y = C.VIEW_H + off; y > -bh; y -= bh) {
+      for (let y = this.viewH + off; y > -bh; y -= bh) {
         ctx.beginPath();
         ctx.moveTo(x0, y);
         ctx.lineTo(x0 + C.WALL, y);
@@ -313,14 +344,14 @@ export class Renderer {
       g.addColorStop(0, 'rgba(255,255,255,0)');
       g.addColorStop(1, 'rgba(255,255,255,0.18)');
       ctx.fillStyle = g;
-      ctx.fillRect(x0 === 0 ? C.WALL - 10 : C.PLAY_R, 0, 10, C.VIEW_H);
+      ctx.fillRect(x0 === 0 ? C.WALL - 10 : C.PLAY_R, 0, 10, this.viewH);
     }
   }
 
   private drawBestMarker(best: number, cam: number, t: Theme) {
     if (best <= 0) return;
     const y = this.sy(cam, best * C.FLOOR_GAP + C.FLOOR_GAP / 2);
-    if (y < -20 || y > C.VIEW_H + 20) return;
+    if (y < -20 || y > this.viewH + 20) return;
     const { ctx } = this;
     ctx.save();
     ctx.setLineDash([8, 8]);
@@ -344,7 +375,7 @@ export class Renderer {
     if (p.broken) return;
     const { ctx } = this;
     const top = this.sy(cam, p.floor * C.FLOOR_GAP);
-    if (top < -30 || top > C.VIEW_H + 30) return;
+    if (top < -30 || top > this.viewH + 30) return;
     let x = p.x;
     if (p.crumble > 0) x += (Math.random() - 0.5) * 3;
     const w = p.w;
@@ -453,7 +484,7 @@ export class Renderer {
     for (const pk of s.pickups) {
       if (pk.taken) continue;
       const y = this.sy(cam, pk.y) + Math.sin((this.time + pk.id * 17) / 12) * 3;
-      if (y < -20 || y > C.VIEW_H + 20) continue;
+      if (y < -20 || y > this.viewH + 20) continue;
       const style = PICKUP_STYLE[pk.kind];
       ctx.save();
       ctx.translate(pk.x, y);
@@ -631,16 +662,17 @@ export class Renderer {
   private drawFreezeVignette(ticks: number) {
     const { ctx } = this;
     const a = Math.min(1, ticks / 60) * 0.35;
-    const g = ctx.createRadialGradient(C.VIEW_W / 2, C.VIEW_H / 2, C.VIEW_H * 0.3, C.VIEW_W / 2, C.VIEW_H / 2, C.VIEW_H * 0.75);
+    const g = ctx.createRadialGradient(C.VIEW_W / 2, this.viewH / 2, this.viewH * 0.3, C.VIEW_W / 2, this.viewH / 2, this.viewH * 0.75);
     g.addColorStop(0, 'rgba(160,220,255,0)');
     g.addColorStop(1, `rgba(160,220,255,${a})`);
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, C.VIEW_W, C.VIEW_H);
+    ctx.fillRect(0, 0, C.VIEW_W, this.viewH);
   }
 
   private drawHud(s: GameState, f: Frame, t: Theme) {
     const { ctx } = this;
     ctx.save();
+    ctx.translate(0, this.hudTop);
     ctx.textBaseline = 'alphabetic';
     // Score + floor.
     ctx.textAlign = 'left';
@@ -692,7 +724,7 @@ export class Renderer {
 
     // Combo meter.
     const c = s.combo;
-    const mx = C.WALL / 2;
+    const mx = Math.max(C.WALL / 2, this.cropL + 20);
     const top = 120;
     const hgt = 260;
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
@@ -740,7 +772,7 @@ export class Renderer {
       ctx.textAlign = 'center';
       ctx.font = 'bold 14px "Fredoka", system-ui, sans-serif';
       const blink = Math.floor(this.time / 30) % 2 === 0;
-      if (blink) outlined(ctx, f.label, C.VIEW_W / 2, C.VIEW_H - 20, '#ffe27a');
+      if (blink) outlined(ctx, f.label, C.VIEW_W / 2, this.viewH - 20 - this.hudTop - this.hudBottom, '#ffe27a');
     }
     ctx.restore();
   }
@@ -777,7 +809,7 @@ export class Renderer {
       const scale = 0.4 + easeOutBack(inT) * 0.6;
       ctx.save();
       ctx.globalAlpha = 1 - outT;
-      ctx.translate(C.VIEW_W / 2, C.VIEW_H * 0.33);
+      ctx.translate(C.VIEW_W / 2, this.viewH * 0.33);
       ctx.scale(scale, scale);
       ctx.rotate(Math.sin(b.life / 10) * 0.03);
       ctx.textAlign = 'center';
