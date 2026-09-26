@@ -8,7 +8,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Lilita+One&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="stage">
@@ -25,27 +25,59 @@
         <div class="pad jump" data-input="4">▲</div>
       </div>
 
-      <section id="menu" class="panel">
-        <h1><span>ICY TOWER</span><small>Reloaded</small></h1>
-        <div class="profile">
-          <input id="name" maxlength="16" placeholder="Your name" autocomplete="off" />
-          <div class="level">
-            <b id="lvl">Lv 1</b>
-            <div class="bar"><i id="lvl-bar"></i></div>
-            <span id="lvl-xp">0 / 250 XP</span>
-          </div>
+      <section id="menu" class="title">
+        <div class="title-scrim"></div>
+
+        <header class="logo" aria-label="Icy Tower Reloaded">
+          <div class="logo-word small" data-text="ICY">ICY</div>
+          <div class="logo-word" data-text="TOWER">TOWER</div>
+          <svg class="icicles" viewBox="0 0 300 40" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="ice-drip" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#e9fbff" />
+                <stop offset="1" stop-color="#7fe3ff" stop-opacity="0.15" />
+              </linearGradient>
+            </defs>
+            <path fill="url(#ice-drip)" d="M8 0h284v4H8z M22 4l6 22 6-22z M52 4l4 13 4-13z M78 4l7 32 7-32z M112 4l4 12 4-12z M138 4l6 24 6-24z M170 4l4 15 4-15z M196 4l7 30 7-30z M232 4l4 12 4-12z M258 4l6 20 6-20z" />
+            <circle class="drop" cx="85" cy="38" r="2.4" fill="#e9fbff" />
+          </svg>
+          <div class="logo-ribbon"><span>Reloaded</span></div>
+        </header>
+
+        <nav class="modes" aria-label="Game modes">
+          <button class="item hero" data-action="endless">
+            <span class="label">Endless Climb</span>
+            <span class="meta" id="endless-meta">How high can you go?</span>
+          </button>
+          <button class="item" data-action="daily">
+            <span class="label">Daily Tower <i class="chip" id="daily-chip">NEW</i></span>
+            <span class="meta" id="daily-meta">Same tower for everyone today</span>
+          </button>
+          <button class="item" data-action="ai">
+            <span class="label">Watch the AI</span>
+            <span class="meta" id="ai-meta">Frosty, the lookahead bot</span>
+          </button>
+        </nav>
+
+        <div class="dock">
+          <button class="dock-btn" data-action="board"><span class="ico">🏆</span><span>Scores</span></button>
+          <button class="dock-btn" data-action="achievements"><span class="ico">🎖️</span><span id="ach-count">0/18</span></button>
+          <button class="dock-btn" data-action="help"><span class="ico">❔</span><span>How to</span></button>
+          <button class="dock-btn" id="mute"><span class="ico">🔊</span><span>Sound</span></button>
         </div>
-        <div class="buttons">
-          <button class="primary" data-action="endless">▶ Play Endless</button>
-          <button data-action="daily">📅 Daily Tower <em id="daily-note"></em></button>
-          <button data-action="ai">🤖 Watch the AI play</button>
-          <div class="row">
-            <button data-action="board">🏆 Scores</button>
-            <button data-action="achievements">🎖️ <span id="ach-count">0/0</span></button>
-            <button data-action="help">❔ How to</button>
+
+        <footer class="player-card">
+          <div class="lvl-ring" id="lvl-ring"><small>LV</small><b id="lvl">1</b></div>
+          <div class="pc-body">
+            <input id="name" maxlength="16" placeholder="Tap to name your penguin" autocomplete="off" spellcheck="false" />
+            <div class="pc-xp">
+              <div class="bar"><i id="lvl-bar"></i></div>
+              <span id="lvl-xp">0 / 250 XP</span>
+            </div>
           </div>
-        </div>
-        <button id="mute" class="ghost-btn">🔊 Sound on</button>
+        </footer>
+
+        <p class="press-hint"><kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>Enter</kbd> play</p>
       </section>
 
       <section id="help" class="panel hidden">

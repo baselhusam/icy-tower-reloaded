@@ -56,25 +56,93 @@ let boardTab = 'endless';
 // ---- screens -------------------------------------------------------------------------------
 
 function show(id: string | null) {
+  (document.activeElement as HTMLElement | null)?.blur?.();
   for (const p of panels) $(`#${p}`).classList.toggle('hidden', p !== id);
   const playing = id === null && session !== null;
   $('#touch').classList.toggle('hidden', !(playing && isTouch && session?.pilot.kind === 'human'));
   $('#spectator').classList.toggle('hidden', !(playing && session?.pilot.kind !== 'human'));
 }
 
+function bestOn(key: string, bots = false) {
+  return (profile.boards[key] ?? []).find((e) => bots || !e.bot);
+}
+
+function untilNextDaily(): string {
+  const now = new Date();
+  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+  const mins = Math.max(1, Math.round((next - now.getTime()) / 60000));
+  return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+}
+
 function renderMenu() {
-  const nameInput = $<HTMLInputElement>('#name');
-  nameInput.value = profile.name;
+  $<HTMLInputElement>('#name').value = profile.name;
   const lv = levelFromXp(profile.xp);
-  $('#lvl').textContent = `Lv ${lv.level}`;
+  $('#lvl').textContent = `${lv.level}`;
+  $('#lvl-ring').style.setProperty('--p', `${(lv.into / lv.need) * 100}`);
   $('#lvl-bar').style.width = `${(lv.into / lv.need) * 100}%`;
   $('#lvl-xp').textContent = `${lv.into.toLocaleString()} / ${lv.need.toLocaleString()} XP`;
-  const key = boardKey('daily', dailySeedKey());
-  const best = profile.boards[key]?.find((e) => !e.bot);
-  $('#daily-note').textContent = best ? `· best ${best.score.toLocaleString()} · ghost ready` : '· new tower today';
+
+  const endless = bestOn('endless');
+  $('#endless-meta').textContent = endless
+    ? `Best ${endless.score.toLocaleString()} · floor ${endless.floor}`
+    : 'How high can you go?';
+  const daily = bestOn(boardKey('daily', dailySeedKey()));
+  const chip = $('#daily-chip');
+  chip.textContent = daily ? 'GHOST' : 'NEW';
+  chip.classList.toggle('ghost', !!daily);
+  $('#daily-meta').textContent = daily
+    ? `Best ${daily.score.toLocaleString()} · new tower in ${untilNextDaily()}`
+    : `Same tower for everyone · ends in ${untilNextDaily()}`;
+  const ai = bestOn('ai', true);
+  $('#ai-meta').textContent = ai ? `Frosty's record: floor ${ai.floor}` : 'Frosty, the lookahead bot';
+
   $('#ach-count').textContent = `${Object.keys(profile.achievements).length}/${ACHIEVEMENTS.length}`;
-  $('#mute').textContent = profile.muted ? '🔇 Sound off' : '🔊 Sound on';
+  $('#mute').innerHTML = `<span class="ico">${profile.muted ? '🔇' : '🔊'}</span><span>${profile.muted ? 'Muted' : 'Sound'}</span>`;
   show('menu');
+  selectMenu(menuIndex, false);
+}
+
+// Title menu: one selection shared by keyboard and mouse, like a console menu.
+let menuIndex = 0;
+const menuEntries = () => [...document.querySelectorAll<HTMLElement>('#menu .item, #menu .dock-btn')];
+const modeCount = () => document.querySelectorAll('#menu .item').length;
+
+function selectMenu(i: number, sound = true) {
+  const entries = menuEntries();
+  const next = Math.max(0, Math.min(entries.length - 1, i));
+  if (sound && next !== menuIndex) sfx.menuMove();
+  menuIndex = next;
+  entries.forEach((el, j) => el.classList.toggle('selected', j === menuIndex));
+}
+
+function menuKey(e: KeyboardEvent): boolean {
+  const modes = modeCount();
+  const inDock = menuIndex >= modes;
+  switch (e.code) {
+    case 'ArrowDown':
+    case 'KeyS':
+      if (!inDock) selectMenu(menuIndex + 1);
+      return true;
+    case 'ArrowUp':
+    case 'KeyW':
+      selectMenu(inDock ? modes - 1 : menuIndex - 1);
+      return true;
+    case 'ArrowLeft':
+    case 'KeyA':
+      if (inDock) selectMenu(Math.max(modes, menuIndex - 1));
+      return true;
+    case 'ArrowRight':
+    case 'KeyD':
+      if (inDock) selectMenu(menuIndex + 1);
+      return true;
+    case 'Enter':
+    case 'Space':
+      e.preventDefault();
+      sfx.unlock();
+      menuEntries()[menuIndex]?.click();
+      return true;
+  }
+  return false;
 }
 
 function renderBoard() {
@@ -400,6 +468,7 @@ document.addEventListener('click', (e) => {
     case 'daily':
     case 'ai':
       attract = null;
+      sfx.menuSelect();
       startMode(btn.dataset.action);
       break;
     case 'board':
@@ -455,15 +524,19 @@ $('#exit-btn').addEventListener('click', () => {
     renderMenu();
   }
 });
-// Space/Enter on the menu starts a game quickly.
+const isOpen = (id: string) => !$(`#${id}`).classList.contains('hidden');
 window.addEventListener('keydown', (e) => {
   if (session || document.activeElement instanceof HTMLInputElement) return;
-  if (e.code === 'Enter' && !$('#over').classList.contains('hidden')) startMode(lastMode);
-  else if (e.code === 'Enter' && !$('#menu').classList.contains('hidden')) {
-    attract = null;
-    startMode('endless');
-  }
+  if (isOpen('menu')) menuKey(e);
+  else if (isOpen('over') && e.code === 'Enter') startMode(lastMode);
+  else if (e.code === 'Escape' && (isOpen('help') || isOpen('board') || isOpen('achievements'))) renderMenu();
 });
+document.querySelectorAll<HTMLElement>('#menu .item, #menu .dock-btn').forEach((el, i) =>
+  el.addEventListener('pointerenter', () => selectMenu(i)),
+);
+setInterval(() => {
+  if (!session && isOpen('menu') && document.activeElement?.id !== 'name') renderMenu();
+}, 30000);
 
 // Expose the engine for external agents / console tinkering.
 (window as unknown as Record<string, unknown>).icyTower = {

@@ -83,6 +83,13 @@ export class Sfx {
   gameOver() {
     [440, 370, 311, 220].forEach((n, i) => this.tone(n, 0.25, 'triangle', 0.18, undefined, i * 0.16));
   }
+  menuMove() {
+    this.tone(660, 0.04, 'square', 0.06);
+  }
+  menuSelect() {
+    this.tone(523, 0.07, 'square', 0.1);
+    this.tone(1047, 0.12, 'square', 0.1, undefined, 0.06);
+  }
   achievement() {
     [784, 988, 1175, 1568].forEach((n, i) => this.tone(n, 0.12, 'sine', 0.16, undefined, i * 0.08));
   }
