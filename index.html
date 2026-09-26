@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0b1e3a" />
+    <title>Icy Tower Reloaded</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="game"></canvas>
+
+      <div id="spectator" class="hidden">
+        <button id="ff-btn">⏩ ×1</button>
+        <button id="exit-btn">✕ Exit</button>
+      </div>
+
+      <div id="touch" class="hidden">
+        <div class="pad left" data-input="1">◀</div>
+        <div class="pad right" data-input="2">▶</div>
+        <div class="pad jump" data-input="4">▲</div>
+      </div>
+
+      <section id="menu" class="panel">
+        <h1><span>ICY TOWER</span><small>Reloaded</small></h1>
+        <div class="profile">
+          <input id="name" maxlength="16" placeholder="Your name" autocomplete="off" />
+          <div class="level">
+            <b id="lvl">Lv 1</b>
+            <div class="bar"><i id="lvl-bar"></i></div>
+            <span id="lvl-xp">0 / 250 XP</span>
+          </div>
+        </div>
+        <div class="buttons">
+          <button class="primary" data-action="endless">▶ Play Endless</button>
+          <button data-action="daily">📅 Daily Tower <em id="daily-note"></em></button>
+          <button data-action="ai">🤖 Watch the AI play</button>
+          <div class="row">
+            <button data-action="board">🏆 Scores</button>
+            <button data-action="achievements">🎖️ <span id="ach-count">0/0</span></button>
+            <button data-action="help">❔ How to</button>
+          </div>
+        </div>
+        <button id="mute" class="ghost-btn">🔊 Sound on</button>
+      </section>
+
+      <section id="help" class="panel hidden">
+        <h2>How to play</h2>
+        <ul class="help">
+          <li><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd> to run, <kbd>Space</kbd>/<kbd>↑</kbd> to jump. <kbd>Esc</kbd> pauses.</li>
+          <li><b>Speed is height.</b> The faster you run, the higher you jump.</li>
+          <li><b>Bounce off walls</b> in mid-air to keep your speed.</li>
+          <li><b>Combos:</b> chain jumps that skip 2+ floors before the combo meter empties. Cash-in = floors².</li>
+          <li><b>Don't fall off the bottom.</b> The tower scrolls faster every 30 seconds.</li>
+          <li>💎 gems +25 · 🚀 rocket jump · ❄️ freezes the scroll · 🧲 pulls in gems</li>
+          <li>Watch for <b>ice</b> (slippery), <b>moving</b>, <b>crumbling</b> and <b>spring</b> platforms higher up.</li>
+          <li><b>Daily Tower:</b> same tower for everyone today. Race your ghost.</li>
+        </ul>
+        <button data-action="back">Back</button>
+      </section>
+
+      <section id="board" class="panel hidden">
+        <h2>Leaderboard</h2>
+        <div class="tabs">
+          <button data-tab="endless" class="active">Endless</button>
+          <button data-tab="daily">Today</button>
+          <button data-tab="ai">AI</button>
+        </div>
+        <ol id="board-list"></ol>
+        <p class="note">Scores are stored on this device. Every run is saved as a replay, so a global board can verify them server-side.</p>
+        <button data-action="back">Back</button>
+      </section>
+
+      <section id="achievements" class="panel hidden">
+        <h2>Achievements</h2>
+        <div id="ach-grid"></div>
+        <div id="lifetime"></div>
+        <button data-action="back">Back</button>
+      </section>
+
+      <section id="pause" class="panel hidden">
+        <h2>Paused</h2>
+        <div class="buttons">
+          <button class="primary" data-action="resume">Resume</button>
+          <button data-action="quit">Quit to menu</button>
+        </div>
+      </section>
+
+      <section id="over" class="panel hidden">
+        <h2 id="over-title">Game Over</h2>
+        <div id="over-badges"></div>
+        <div class="stats">
+          <div><span>Score</span><b id="o-score">0</b></div>
+          <div><span>Floor</span><b id="o-floor">0</b></div>
+          <div><span>Best combo</span><b id="o-combo">0</b></div>
+          <div><span>Gems</span><b id="o-gems">0</b></div>
+        </div>
+        <div class="level xp-gain">
+          <b id="o-lvl">Lv 1</b>
+          <div class="bar"><i id="o-bar"></i></div>
+          <span id="o-xp">+0 XP</span>
+        </div>
+        <div id="o-unlocks"></div>
+        <div class="buttons">
+          <button class="primary" data-action="retry">↻ Play again</button>
+          <div class="row">
+            <button data-action="replay">🎬 Watch replay</button>
+            <button data-action="quit">Menu</button>
+          </div>
+        </div>
+      </section>
+
+      <div id="toasts"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

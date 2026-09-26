@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "game", "runtimeExecutable": "npx", "runtimeArgs": ["vite", "--port", "5188", "--strictPort"], "port": 5188 }
+  ]
+}
