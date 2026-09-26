@@ -750,6 +750,10 @@ kbd {
   font-size: calc(var(--u) * 20);
   line-height: 1;
 }
+.dock-btn.off .ico {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
 .dock-btn:hover {
   background: rgba(20, 44, 88, 0.85);
 }

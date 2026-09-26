@@ -2,11 +2,12 @@ import './style.css';
 import { observe, type Agent } from './agents/api';
 import { PlannerAgent } from './agents/planner';
 import { Sfx } from './audio';
-import { TICK_RATE } from './engine/constants';
+import { TICK_RATE, VIEW_H } from './engine/constants';
 import { Ghost, InputRecorder, decodeInputs, type Replay } from './engine/replay';
 import { dailySeedKey, hashSeed } from './engine/rng';
 import { createGame, step, type GameEvent, type GameState } from './engine/sim';
 import { Controls } from './input';
+import { Music, type MusicMood } from './music';
 import {
   ACHIEVEMENTS,
   boardKey,
@@ -44,6 +45,8 @@ const sfx = new Sfx();
 const controls = new Controls($('#touch'));
 const profile: Profile = loadProfile();
 sfx.muted = profile.muted;
+const music = new Music(sfx);
+music.enabled = profile.music;
 const isTouch = matchMedia('(pointer: coarse)').matches;
 
 let session: Session | null = null;
@@ -98,6 +101,7 @@ function renderMenu() {
 
   $('#ach-count').textContent = `${Object.keys(profile.achievements).length}/${ACHIEVEMENTS.length}`;
   $('#mute').innerHTML = `<span class="ico">${profile.muted ? '🔇' : '🔊'}</span><span>${profile.muted ? 'Muted' : 'Sound'}</span>`;
+  paintMusicBtn();
   show('menu');
   selectMenu(menuIndex, false);
 }
@@ -297,6 +301,7 @@ function playSounds(events: GameEvent[]) {
         break;
       case 'speedUp':
         sfx.speedUp();
+        music.surge();
         break;
       case 'milestone':
         sfx.milestone();
@@ -440,7 +445,26 @@ function frame(now: number) {
     });
   }
 
+  music.update(musicMood());
   if (session?.overAt && now - session.overAt > 1100) finish(session);
+}
+
+function musicMood(): MusicMood {
+  if (!session) return { scene: 'menu' };
+  const st = session.state;
+  // Danger ramps up over the bottom ~quarter of the screen once the tower is scrolling.
+  const height = (st.player.y - st.cameraY) / VIEW_H;
+  return {
+    scene: 'play',
+    speedLevel: st.speedLevel,
+    scrolling: st.scrolling,
+    floor: st.floor,
+    danger: st.scrolling ? Math.max(0, Math.min(1, (0.28 - height) / 0.28)) : 0,
+    combo: st.combo.active,
+    frozen: st.freeze > 0,
+    paused,
+    over: st.over,
+  };
 }
 
 // ---- wiring ---------------------------------------------------------------------------------
@@ -512,6 +536,23 @@ $('#mute').addEventListener('click', () => {
   sfx.muted = profile.muted;
   saveProfile(profile);
   renderMenu();
+});
+function paintMusicBtn() {
+  $('#music').innerHTML = `<span class="ico">🎵</span><span>${profile.music ? 'Music' : 'No music'}</span>`;
+  $('#music').classList.toggle('off', !profile.music);
+}
+function toggleMusic() {
+  profile.music = !profile.music;
+  music.enabled = profile.music;
+  saveProfile(profile);
+  paintMusicBtn();
+}
+$('#music').addEventListener('click', toggleMusic);
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyM' && !e.repeat && !(document.activeElement instanceof HTMLInputElement)) {
+    sfx.unlock();
+    toggleMusic();
+  }
 });
 $('#ff-btn').addEventListener('click', () => {
   speed = speed === 1 ? 4 : speed === 4 ? 16 : 1;

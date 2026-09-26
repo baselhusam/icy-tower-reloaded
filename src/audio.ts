@@ -3,6 +3,7 @@ export class Sfx {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   muted = false;
+  private unlocked = false;
 
   private ensure(): AudioContext | null {
     if (this.muted) return null;
@@ -21,7 +22,13 @@ export class Sfx {
   }
 
   unlock() {
+    this.unlocked = true;
     this.ensure();
+  }
+
+  /** The shared context for the music, once a user gesture has allowed audio. */
+  context(): AudioContext | null {
+    return this.unlocked ? this.ensure() : null;
   }
 
   private tone(freq: number, dur: number, type: OscillatorType = 'square', vol = 0.25, slideTo?: number, delay = 0) {

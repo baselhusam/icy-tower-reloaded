@@ -35,6 +35,7 @@ export interface Profile {
   boards: Record<string, ScoreEntry[]>; // "endless" or "daily:YYYY-MM-DD"
   ghosts: Record<string, Replay>; // best replay per board key
   muted: boolean;
+  music: boolean;
 }
 
 export interface Achievement {
@@ -77,6 +78,7 @@ function blankProfile(): Profile {
     boards: {},
     ghosts: {},
     muted: false,
+    music: true,
   };
 }
 
