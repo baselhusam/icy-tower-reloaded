@@ -1,5 +1,6 @@
 import * as C from '../engine/constants';
 import { comboRating, type GameEvent, type GameState, type Platform, type PickupKind } from '../engine/sim';
+import { drawCharacter, type Look } from './characters';
 import { blend, themeAt, type Theme } from './theme';
 
 interface Particle {
@@ -43,6 +44,7 @@ export interface Frame {
   ghost: GameState | null;
   bestFloor: number;
   label: string | null; // e.g. "AI PLAYING" / "REPLAY"
+  look: Look;
   hud: boolean;
 }
 
@@ -262,8 +264,8 @@ export class Renderer {
     this.drawBestMarker(f.bestFloor, cam, theme);
     for (const plat of s.platforms) this.drawPlatform(plat, cam, theme);
     this.drawPickups(s, cam);
-    if (f.ghost && !f.ghost.over) this.drawPlayer(f.ghost.player.x, f.ghost.player.y, f.ghost, cam, 0.35, true);
-    this.drawPlayer(px, py, s, cam, 1, false);
+    if (f.ghost && !f.ghost.over) this.drawPlayer(f.ghost.player.x, f.ghost.player.y, f.ghost, cam, 0.35, true, f.look);
+    this.drawPlayer(px, py, s, cam, 1, false, f.look);
     this.drawParticles(cam);
     this.drawWalls(theme, cam);
     ctx.restore();
@@ -524,7 +526,7 @@ export class Renderer {
     }
   }
 
-  private drawPlayer(x: number, y: number, s: GameState, cam: number, alpha: number, ghost: boolean) {
+  private drawPlayer(x: number, y: number, s: GameState, cam: number, alpha: number, ghost: boolean, look: Look) {
     const { ctx } = this;
     const p = s.player;
     const sy = this.sy(cam, y);
@@ -569,51 +571,7 @@ export class Renderer {
       ctx.lineTo(0, 30 + Math.random() * 8);
       ctx.fill();
     }
-    // Feet.
-    ctx.fillStyle = '#ff9d2e';
-    ctx.beginPath();
-    ctx.ellipse(-6, 19, 6, 3, 0, 0, Math.PI * 2);
-    ctx.ellipse(7, 19, 6, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Body.
-    ctx.fillStyle = '#1b2a4a';
-    ctx.beginPath();
-    ctx.ellipse(0, 1, 15, 19, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#f4f8ff';
-    ctx.beginPath();
-    ctx.ellipse(3, 5, 10, 13, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Flipper.
-    ctx.fillStyle = '#14203a';
-    ctx.beginPath();
-    ctx.ellipse(-11, 4, 4, 10, p.grounded ? 0.2 : -0.9, 0, Math.PI * 2);
-    ctx.fill();
-    // Scarf, fluttering behind with speed.
-    ctx.fillStyle = '#ff4d6d';
-    ctx.fillRect(-13, -8, 26, 5);
-    const flutter = Math.sin(this.time / 3) * 2;
-    ctx.beginPath();
-    ctx.moveTo(-10, -7);
-    ctx.lineTo(-18 - Math.min(10, Math.abs(p.vx)), -9 + flutter);
-    ctx.lineTo(-17 - Math.min(10, Math.abs(p.vx)), -2 + flutter);
-    ctx.lineTo(-9, -3);
-    ctx.fill();
-    // Eyes + beak.
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.ellipse(6, -12, 4.5, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#0b1020';
-    ctx.beginPath();
-    ctx.arc(7.5, -12, 2.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ff9d2e';
-    ctx.beginPath();
-    ctx.moveTo(10, -8);
-    ctx.lineTo(18, -6);
-    ctx.lineTo(10, -4);
-    ctx.fill();
+    drawCharacter(ctx, look, { t: this.time, grounded: p.grounded, vx: p.vx });
     ctx.restore();
 
     if (s.magnet > 0) {

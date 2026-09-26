@@ -3,6 +3,7 @@
 // here are what a global leaderboard API would accept.
 import type { Replay } from '../engine/replay';
 import type { GameState } from '../engine/sim';
+import { DEFAULT_LOOK, sanitizeLook, type Look } from '../render/characters';
 
 export type Mode = 'endless' | 'daily';
 
@@ -13,6 +14,7 @@ export interface ScoreEntry {
   combo: number;
   date: string;
   bot?: boolean;
+  look?: Look; // the climber's outfit at the time of the run
 }
 
 export interface Lifetime {
@@ -29,6 +31,7 @@ export interface Lifetime {
 
 export interface Profile {
   name: string;
+  look: Look;
   xp: number;
   lifetime: Lifetime;
   achievements: Record<string, string>; // id -> date unlocked
@@ -72,6 +75,7 @@ const KEY = 'icy-tower-reloaded:v1';
 function blankProfile(): Profile {
   return {
     name: '',
+    look: { ...DEFAULT_LOOK },
     xp: 0,
     lifetime: { games: 0, floors: 0, jumps: 0, gems: 0, combos: 0, wallBounces: 0, powerups: 0, springs: 0, playSeconds: 0 },
     achievements: {},
@@ -88,7 +92,7 @@ export function loadProfile(): Profile {
     if (raw) {
       const p = JSON.parse(raw) as Profile;
       const base = blankProfile();
-      return { ...base, ...p, lifetime: { ...base.lifetime, ...p.lifetime } };
+      return { ...base, ...p, look: sanitizeLook(p.look), lifetime: { ...base.lifetime, ...p.lifetime } };
     }
   } catch {
     /* storage unavailable: play without persistence */
@@ -168,6 +172,7 @@ export function recordRun(profile: Profile, run: GameState, key: string, replay:
     combo: run.stats.bestComboFloors,
     date: new Date().toISOString(),
     bot: bot || undefined,
+    look: bot ? undefined : { ...profile.look },
   };
   board.push(entry);
   board.sort((a, b) => b.score - a.score);

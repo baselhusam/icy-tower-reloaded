@@ -63,6 +63,7 @@
         </nav>
 
         <div class="dock">
+          <button class="dock-btn" data-action="wardrobe"><span class="ico">👕</span><span>Style</span></button>
           <button class="dock-btn" data-action="board"><span class="ico">🏆</span><span>Scores</span></button>
           <button class="dock-btn" data-action="achievements"><span class="ico">🎖️</span><span id="ach-count">0/18</span></button>
           <button class="dock-btn" data-action="help"><span class="ico">❔</span><span>How to</span></button>
@@ -73,12 +74,13 @@
         <footer class="player-card">
           <div class="lvl-ring" id="lvl-ring"><small>LV</small><b id="lvl">1</b></div>
           <div class="pc-body">
-            <input id="name" maxlength="16" placeholder="Tap to name your penguin" autocomplete="off" spellcheck="false" />
+            <input id="name" maxlength="16" placeholder="Tap to name your climber" autocomplete="off" spellcheck="false" />
             <div class="pc-xp">
               <div class="bar"><i id="lvl-bar"></i></div>
               <span id="lvl-xp">0 / 250 XP</span>
             </div>
           </div>
+          <button class="pc-avatar" data-action="wardrobe" aria-label="Change character"><img id="pc-avatar" alt="" /></button>
         </footer>
 
         <p class="press-hint"><kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>Enter</kbd> play</p>
@@ -97,6 +99,24 @@
           <li><b>Daily Tower:</b> same tower for everyone today. Race your ghost.</li>
         </ul>
         <button data-action="back">Back</button>
+      </section>
+
+      <section id="wardrobe" class="panel hidden">
+        <h2>Your Climber</h2>
+        <div class="wd-stage">
+          <canvas id="wd-preview"></canvas>
+          <button class="wd-nav prev" data-wd="prev" aria-label="Previous character">‹</button>
+          <button class="wd-nav next" data-wd="next" aria-label="Next character">›</button>
+        </div>
+        <div class="wd-title"><b id="wd-name">Pip</b><span id="wd-tag"></span></div>
+        <div class="wd-chars" id="wd-chars"></div>
+        <div class="wd-row"><span>Hat</span><div class="wd-opts" id="wd-hat"></div></div>
+        <div class="wd-row"><span>Outfit</span><div class="wd-opts" id="wd-color"></div></div>
+        <div class="wd-row"><span>Extra</span><div class="wd-opts" id="wd-extra"></div></div>
+        <div class="row">
+          <button data-wd="random">🎲 Surprise me</button>
+          <button class="primary" data-action="back">Done</button>
+        </div>
       </section>
 
       <section id="board" class="panel hidden">

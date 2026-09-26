@@ -252,7 +252,7 @@ kbd {
 }
 #board-list li {
   display: grid;
-  grid-template-columns: 28px 1fr auto;
+  grid-template-columns: 28px 34px 1fr auto;
   gap: 8px;
   align-items: center;
   padding: 7px 10px;
@@ -261,6 +261,13 @@ kbd {
 }
 #board-list li:nth-child(odd) {
   background: rgba(255, 255, 255, 0.05);
+}
+#board-list li .av {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, rgba(127, 227, 255, 0.28), rgba(10, 24, 52, 0.9) 72%);
+  border: 1px solid rgba(127, 227, 255, 0.25);
 }
 #board-list li .rank {
   font-weight: 700;
@@ -500,6 +507,142 @@ kbd {
   .panel {
     padding: 16px 14px 12px;
   }
+}
+
+/* ---- Wardrobe ---------------------------------------------------------------------------- */
+
+.wd-stage {
+  position: relative;
+  height: 170px;
+  margin: -4px -8px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(127, 227, 255, 0.15);
+  background: radial-gradient(ellipse at 50% 30%, #17305e, #081530 75%);
+  overflow: hidden;
+}
+#wd-preview {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.wd-nav {
+  position: absolute;
+  top: 50%;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  margin-top: -30px;
+  font-size: 26px;
+  line-height: 1;
+  border-radius: 50%;
+  background: rgba(10, 24, 52, 0.75);
+}
+.wd-nav.prev {
+  left: 10px;
+}
+.wd-nav.next {
+  right: 10px;
+}
+.wd-title {
+  margin: -2px 0 10px;
+  line-height: 1.15;
+}
+.wd-title b {
+  display: block;
+  font-family: 'Lilita One', 'Fredoka', sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  letter-spacing: 1px;
+  color: var(--gold);
+  text-shadow: 0 2px 0 rgba(4, 10, 26, 0.9);
+}
+.wd-title span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+.wd-chars {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.wd-char {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px 5px;
+  font-size: 13px;
+  background: rgba(10, 24, 52, 0.6);
+}
+.wd-char img {
+  width: 48px;
+  height: 48px;
+}
+.wd-char.on {
+  border-color: var(--gold);
+  background: rgba(255, 226, 122, 0.12);
+  box-shadow: 0 0 0 1px var(--gold) inset;
+  color: var(--gold);
+}
+.wd-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.wd-row > span {
+  width: 48px;
+  flex: none;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.wd-opts {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+}
+.wd-opts .opt {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 40px;
+  height: 38px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 10px;
+  color: var(--muted);
+}
+.wd-opts .opt.on {
+  border-color: var(--gold);
+  background: rgba(255, 226, 122, 0.15);
+  box-shadow: 0 0 0 1px var(--gold) inset;
+  color: var(--text);
+}
+.wd-opts .swatch {
+  max-width: 28px;
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--c);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+}
+.wd-opts .swatch:hover {
+  background: var(--c);
+  transform: scale(1.1);
+}
+.wd-opts .swatch.on {
+  background: var(--c);
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--gold);
+}
+#wardrobe .row {
+  margin-top: 6px;
 }
 
 /* ---- Title screen ------------------------------------------------------------------------ */
@@ -824,6 +967,26 @@ kbd {
 }
 .pc-body input:focus {
   border-bottom-color: var(--accent);
+}
+.pc-avatar {
+  flex: none;
+  width: calc(var(--u) * 54);
+  height: calc(var(--u) * 54);
+  padding: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, rgba(127, 227, 255, 0.3), rgba(10, 24, 52, 0.9) 72%);
+  border: 1px solid rgba(127, 227, 255, 0.35);
+  overflow: hidden;
+}
+.pc-avatar:hover {
+  background: radial-gradient(circle at 50% 40%, rgba(255, 226, 122, 0.35), rgba(10, 24, 52, 0.9) 72%);
+  border-color: var(--gold);
+  transform: scale(1.06);
+}
+.pc-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 .pc-xp {
   display: flex;

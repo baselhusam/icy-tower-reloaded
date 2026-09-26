@@ -18,6 +18,7 @@ import {
   type Mode,
   type Profile,
 } from './meta/progress';
+import { avatarURL, CHARACTERS, COLORS, DEFAULT_LOOK, drawStage, EXTRAS, FROSTY_LOOK, HATS, randomLook, type Look } from './render/characters';
 import { Renderer } from './render/renderer';
 
 type Pilot = { kind: 'human' } | { kind: 'ai'; agent: Agent } | { kind: 'replay'; inputs: Uint8Array; i: number };
@@ -37,7 +38,7 @@ interface Session {
 }
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
-const panels = ['menu', 'help', 'board', 'achievements', 'pause', 'over'];
+const panels = ['menu', 'help', 'board', 'achievements', 'pause', 'over', 'wardrobe'];
 
 const canvas = $<HTMLCanvasElement>('#game');
 const renderer = new Renderer(canvas);
@@ -79,6 +80,7 @@ function untilNextDaily(): string {
 
 function renderMenu() {
   $<HTMLInputElement>('#name').value = profile.name;
+  $<HTMLImageElement>('#pc-avatar').src = avatarURL(profile.look);
   const lv = levelFromXp(profile.xp);
   $('#lvl').textContent = `${lv.level}`;
   $('#lvl-ring').style.setProperty('--p', `${(lv.into / lv.need) * 100}`);
@@ -158,7 +160,7 @@ function renderBoard() {
     ? list
         .map(
           (e, i) =>
-            `<li><span class="rank">${['🥇', '🥈', '🥉'][i] ?? i + 1}</span><span>${escapeHtml(e.name)}<small>floor ${e.floor} · combo ${e.combo} · ${new Date(e.date).toLocaleDateString()}</small></span><b>${e.score.toLocaleString()}</b></li>`,
+            `<li><span class="rank">${['🥇', '🥈', '🥉'][i] ?? i + 1}</span><img class="av" src="${avatarURL(e.look ?? (e.bot ? FROSTY_LOOK : DEFAULT_LOOK))}" alt="" /><span>${escapeHtml(e.name)}<small>floor ${e.floor} · combo ${e.combo} · ${new Date(e.date).toLocaleDateString()}</small></span><b>${e.score.toLocaleString()}</b></li>`,
         )
         .join('')
     : `<li class="empty">No runs yet. Go set the bar!</li>`;
@@ -182,6 +184,49 @@ function renderAchievements() {
   $('#lifetime').innerHTML = cells.map(([k, v]) => `<div><b>${v}</b>${k}</div>`).join('');
   show('achievements');
 }
+
+// ---- wardrobe ------------------------------------------------------------------------------
+
+let wardrobePop = 0;
+
+function renderWardrobe() {
+  const l = profile.look;
+  const ch = CHARACTERS.find((c) => c.id === l.char)!;
+  $('#wd-name').textContent = ch.name;
+  $('#wd-tag').textContent = ch.tag;
+  $('#wd-chars').innerHTML = CHARACTERS.map(
+    (c) => `<button class="wd-char ${c.id === l.char ? 'on' : ''}" data-char="${c.id}"><img src="${avatarURL({ ...l, char: c.id }, 56)}" alt="" /><span>${c.name}</span></button>`,
+  ).join('');
+  $('#wd-hat').innerHTML = HATS.map((h) => `<button class="opt ${h.id === l.hat ? 'on' : ''}" data-hat="${h.id}" title="${h.name}">${h.icon}</button>`).join('');
+  $('#wd-color').innerHTML = COLORS.map((c, i) => `<button class="opt swatch ${i === l.color ? 'on' : ''}" data-color="${i}" style="--c:${c}" aria-label="Colour ${i + 1}"></button>`).join('');
+  $('#wd-extra').innerHTML = EXTRAS.map((x) => `<button class="opt ${x.id === l.extra ? 'on' : ''}" data-extra="${x.id}" title="${x.name}">${x.icon}</button>`).join('');
+}
+
+function setLook(patch: Partial<Look>) {
+  profile.look = { ...profile.look, ...patch };
+  saveProfile(profile);
+  wardrobePop = 1;
+  sfx.menuMove();
+  renderWardrobe();
+}
+
+function cycleCharacter(dir: number) {
+  const i = CHARACTERS.findIndex((c) => c.id === profile.look.char);
+  setLook({ char: CHARACTERS[(i + dir + CHARACTERS.length) % CHARACTERS.length].id });
+}
+
+$('#wardrobe').addEventListener('click', (e) => {
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-char], [data-hat], [data-color], [data-extra], [data-wd]');
+  if (!el) return;
+  const d = el.dataset;
+  if (d.char) setLook({ char: d.char as Look['char'] });
+  else if (d.hat) setLook({ hat: d.hat as Look['hat'] });
+  else if (d.color) setLook({ color: Number(d.color) });
+  else if (d.extra) setLook({ extra: d.extra as Look['extra'] });
+  else if (d.wd === 'prev') cycleCharacter(-1);
+  else if (d.wd === 'next') cycleCharacter(1);
+  else if (d.wd === 'random') setLook(randomLook());
+});
 
 function toast(icon: string, title: string, desc: string) {
   const el = document.createElement('div');
@@ -442,7 +487,12 @@ function frame(now: number) {
       bestFloor: session && pilot === 'human' ? Math.max(0, ...(profile.boards[active.boardKey] ?? []).filter((e) => !e.bot).map((e) => e.floor)) : 0,
       hud: session !== null,
       label: !session ? null : pilot === 'ai' ? '🤖 AI PLAYING' : pilot === 'replay' ? '🎬 REPLAY' : null,
+      look: session && pilot !== 'ai' ? profile.look : FROSTY_LOOK,
     });
+  }
+  if (isOpen('wardrobe')) {
+    drawStage($<HTMLCanvasElement>('#wd-preview'), profile.look, now / (1000 / 60), wardrobePop);
+    wardrobePop *= 0.85;
   }
 
   music.update(musicMood());
@@ -494,6 +544,10 @@ document.addEventListener('click', (e) => {
       attract = null;
       sfx.menuSelect();
       startMode(btn.dataset.action);
+      break;
+    case 'wardrobe':
+      renderWardrobe();
+      show('wardrobe');
       break;
     case 'board':
       renderBoard();
@@ -570,7 +624,8 @@ window.addEventListener('keydown', (e) => {
   if (session || document.activeElement instanceof HTMLInputElement) return;
   if (isOpen('menu')) menuKey(e);
   else if (isOpen('over') && e.code === 'Enter') startMode(lastMode);
-  else if (e.code === 'Escape' && (isOpen('help') || isOpen('board') || isOpen('achievements'))) renderMenu();
+  else if (isOpen('wardrobe') && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) cycleCharacter(e.code === 'ArrowLeft' ? -1 : 1);
+  else if (e.code === 'Escape' && (isOpen('help') || isOpen('board') || isOpen('achievements') || isOpen('wardrobe'))) renderMenu();
 });
 document.querySelectorAll<HTMLElement>('#menu .item, #menu .dock-btn').forEach((el, i) =>
   el.addEventListener('pointerenter', () => selectMenu(i)),
