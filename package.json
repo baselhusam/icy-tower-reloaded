@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "bot": "tsx scripts/bot.ts"
+    "bot": "tsx scripts/bot.ts",
+    "site": "node scripts/build-site.mjs",
+    "site:preview": "npm run site && vite preview --outDir _site --port 5190 --strictPort"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
