@@ -1076,3 +1076,222 @@ kbd {
     animation: none !important;
   }
 }
+
+/* ---- Arena (LAN multiplayer) ------------------------------------------------------------ */
+
+.arena-bar {
+  position: absolute;
+  top: calc(var(--sat) + var(--u) * 10);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 7);
+  width: auto;
+  max-width: calc(100% - var(--u) * 24);
+  padding: calc(var(--u) * 5) calc(var(--u) * 12);
+  font-size: calc(var(--u) * 12);
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--muted);
+  background: rgba(5, 12, 30, 0.72);
+  border: 1px solid rgba(141, 255, 207, 0.35);
+  border-radius: 999px;
+  animation: fade-up 0.5s ease-out 0.2s both;
+}
+.arena-bar:hover {
+  background: rgba(10, 26, 56, 0.9);
+}
+.arena-bar:active {
+  transform: translateX(-50%) scale(0.97);
+}
+.arena-bar b {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.live-dot {
+  flex: none;
+  width: calc(var(--u) * 8);
+  height: calc(var(--u) * 8);
+  border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 0 0 rgba(141, 255, 207, 0.6);
+  animation: live-pulse 2s ease-out infinite;
+}
+@keyframes live-pulse {
+  70% {
+    box-shadow: 0 0 0 calc(var(--u) * 7) rgba(141, 255, 207, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(141, 255, 207, 0);
+  }
+}
+
+.item.cup .label {
+  color: var(--gold);
+}
+.chip.live {
+  background: var(--pink);
+  color: #2a0014;
+  animation: chip-blink 1.6s ease-in-out infinite;
+}
+.chip.soon {
+  background: var(--gold);
+  color: #2a1a00;
+  animation: none;
+}
+@keyframes chip-blink {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.tabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 7px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+.board-head {
+  margin: -2px 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.board-head b {
+  color: var(--gold);
+}
+#board-list li.me {
+  background: rgba(141, 255, 207, 0.12);
+  box-shadow: 0 0 0 1px rgba(141, 255, 207, 0.4) inset;
+}
+#board-list li.climbing small::after {
+  content: ' · climbing now';
+  color: var(--mint);
+}
+#board-list li .num {
+  text-align: right;
+  line-height: 1.1;
+}
+#board-list li .num small {
+  font-weight: 500;
+}
+.note code,
+.host-share code {
+  font-size: 11px;
+  color: var(--accent);
+  user-select: all;
+}
+
+.arena-result {
+  margin: -4px 0 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  color: var(--muted);
+  background: rgba(127, 227, 255, 0.07);
+  border: 1px solid rgba(127, 227, 255, 0.2);
+}
+.arena-result b {
+  color: var(--gold);
+  font-size: 16px;
+}
+.arena-result.error {
+  border-color: rgba(255, 138, 138, 0.5);
+  color: #ffb3b3;
+}
+
+.host-share {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+}
+.host-share code {
+  font-size: 15px;
+  word-break: break-all;
+}
+.host-share a {
+  color: var(--mint);
+  font-weight: 600;
+  text-decoration: none;
+}
+.host-form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+.host-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.host-form .wide,
+.host-form button {
+  grid-column: 1 / -1;
+}
+.host-form input,
+.host-form select {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  padding: 8px;
+  user-select: text;
+}
+#host-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  text-align: left;
+}
+#host-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+#host-list li:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.05);
+}
+#host-list li small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+#host-list li .acts {
+  display: flex;
+  gap: 6px;
+}
+#host-list li .acts button {
+  width: auto;
+  padding: 5px 9px;
+  font-size: 12px;
+}
+/* A fourth mode (the tournament) needs a little room from the logo. */
+#menu:has(.item.cup:not(.hidden)) .logo {
+  margin-bottom: calc(var(--u) * 16);
+}
+#menu:has(.item.cup:not(.hidden)) .modes {
+  gap: 0;
+  margin-bottom: calc(var(--u) * 14);
+}

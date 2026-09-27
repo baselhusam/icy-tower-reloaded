@@ -1,16 +1,53 @@
 {
   "name": "icy-tower-reloaded",
-  "private": true,
   "version": "0.1.0",
+  "description": "Icy Tower in the browser, plus a zero-dependency LAN arena: shared leaderboards, tournaments and a live TV board for your office.",
+  "keywords": [
+    "icy-tower",
+    "game",
+    "browser-game",
+    "lan",
+    "multiplayer",
+    "leaderboard",
+    "tournament",
+    "office",
+    "sqlite",
+    "cli"
+  ],
+  "license": "MIT",
+  "author": "Basel Husam (https://github.com/baselhusam)",
+  "homepage": "https://github.com/baselhusam/icy-tower-reloaded#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/baselhusam/icy-tower-reloaded.git"
+  },
+  "bugs": {
+    "url": "https://github.com/baselhusam/icy-tower-reloaded/issues"
+  },
   "type": "module",
+  "bin": {
+    "icy-tower-reloaded": "dist/server/cli.js",
+    "icy-tower": "dist/server/cli.js"
+  },
+  "files": [
+    "dist/client",
+    "dist/server"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "dev:arena": "tsx watch --clear-screen=false server/dev.ts",
+    "build": "tsc --noEmit && vite build && vite build --config vite.server.config.ts",
+    "start": "node dist/server/cli.js",
     "preview": "vite preview",
     "test": "vitest run",
     "bot": "tsx scripts/bot.ts",
     "site": "node scripts/build-site.mjs",
-    "site:preview": "npm run site && vite preview --outDir _site --port 5190 --strictPort"
+    "site:preview": "npm run site && vite preview --outDir _site --port 5190 --strictPort",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm test"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",

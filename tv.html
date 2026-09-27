@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#050a18" />
+    <title>Icy Tower Arena · Live board</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Lilita+One&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="tv">
+      <header class="top">
+        <div class="brand">
+          <span class="peng">🐧</span>
+          <div>
+            <div class="word">ICY TOWER</div>
+            <div class="arena" id="arena">Connecting…</div>
+          </div>
+        </div>
+        <div class="join">
+          <span>Join from your laptop or phone</span>
+          <b id="join-url"></b>
+        </div>
+        <div class="online"><i class="live-dot"></i><b id="online">0</b> online</div>
+      </header>
+
+      <main class="grid">
+        <section class="card feature">
+          <div class="feature-head">
+            <div>
+              <div class="kicker" id="feature-kicker">Today's tower</div>
+              <h1 id="feature-title">Daily Tower</h1>
+            </div>
+            <div class="countdown" id="countdown"></div>
+          </div>
+          <ol class="standings" id="standings"></ol>
+        </section>
+
+        <section class="card climbing">
+          <h2>🧗 Climbing now</h2>
+          <ul id="climbers"></ul>
+        </section>
+
+        <section class="card alltime">
+          <h2>🏔️ All-time</h2>
+          <ol class="mini" id="alltime"></ol>
+        </section>
+
+        <section class="card chars">
+          <h2>🎭 Characters</h2>
+          <ol class="mini" id="chars"></ol>
+        </section>
+      </main>
+
+      <footer class="feed" id="feed"><span>Every run is replayed on the server before it counts.</span></footer>
+      <div class="offline hidden" id="offline">
+        <b>No arena here</b>
+        <span>This board works when the game is hosted with <code>npx icy-tower-reloaded</code>.</span>
+      </div>
+    </div>
+    <script type="module" src="/src/tv/main.ts"></script>
+  </body>
+</html>

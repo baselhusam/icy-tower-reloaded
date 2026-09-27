@@ -46,6 +46,14 @@ export interface Frame {
   label: string | null; // e.g. "AI PLAYING" / "REPLAY"
   look: Look;
   hud: boolean;
+  rivals?: Rival[]; // other people climbing the same board right now
+  clock?: string | null; // tournament time left
+}
+
+export interface Rival {
+  name: string;
+  floor: number;
+  color: string;
 }
 
 // How much extra tower a tall screen may reveal above the playfield. Must stay below the engine's
@@ -236,6 +244,11 @@ export class Renderer {
     if (this.texts.length > 8) this.texts.shift();
   }
 
+  /** A big centred banner, e.g. "TIME'S UP!". */
+  announce(text: string, sub: string, color = '#ffe27a') {
+    this.banner(text, sub, color, 150);
+  }
+
   private banner(text: string, sub: string, color: string, max: number) {
     this.banners = [{ text, sub, life: 0, max, color }];
   }
@@ -262,6 +275,7 @@ export class Renderer {
 
     this.drawBackground(theme, cam);
     this.drawBestMarker(f.bestFloor, cam, theme);
+    if (f.rivals?.length) this.drawRivals(f.rivals, cam);
     for (const plat of s.platforms) this.drawPlatform(plat, cam, theme);
     this.drawPickups(s, cam);
     if (f.ghost && !f.ghost.over) this.drawPlayer(f.ghost.player.x, f.ghost.player.y, f.ghost, cam, 0.35, true, f.look);
@@ -370,6 +384,48 @@ export class Renderer {
     ctx.font = 'bold 12px "Fredoka", system-ui, sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(`YOUR BEST · ${best}`, C.PLAY_R - 6, y - 6);
+    ctx.restore();
+  }
+
+  // Name tags on the left wall at the floor each rival has reached; pinned to the screen edge
+  // with an arrow when they're out of view.
+  private drawRivals(rivals: Rival[], cam: number) {
+    const { ctx } = this;
+    const top = 108; // below the score, floor and clock
+    const bottom = this.viewH - 40;
+    ctx.save();
+    ctx.font = 'bold 11px "Fredoka", system-ui, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    const taken: number[] = [];
+    for (const r of rivals.slice(0, 6)) {
+      const raw = this.sy(cam, r.floor * C.FLOOR_GAP + C.FLOOR_GAP / 2);
+      let y = Math.max(top, Math.min(bottom, raw));
+      while (taken.some((t) => Math.abs(t - y) < 20)) y += raw < top ? 20 : -20;
+      taken.push(y);
+      const arrow = raw < top ? '▲ ' : raw > bottom ? '▼ ' : '';
+      const label = `${arrow}${r.name} · ${r.floor}`;
+      const x = Math.max(C.PLAY_L, this.cropL + 4) + 4;
+      const w = ctx.measureText(label).width + 14;
+      ctx.globalAlpha = arrow ? 0.75 : 0.95;
+      ctx.fillStyle = 'rgba(5,10,24,0.72)';
+      roundRect(ctx, x, y - 9, w, 18, 9);
+      ctx.fill();
+      ctx.strokeStyle = r.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = r.color;
+      ctx.beginPath();
+      ctx.arc(x + 7, y, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, x + 13, y + 1);
+      if (!arrow) {
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = r.color;
+        ctx.fillRect(x + w, y - 1, C.PLAY_R - x - w, 2);
+      }
+    }
     ctx.restore();
   }
 
@@ -638,6 +694,7 @@ export class Renderer {
     outlined(ctx, s.score.toLocaleString(), C.WALL + 10, 40, '#fff');
     ctx.font = 'bold 15px "Fredoka", system-ui, sans-serif';
     outlined(ctx, `FLOOR ${s.floor}`, C.WALL + 10, 62, t.accent);
+    if (f.clock) outlined(ctx, `⏱ ${f.clock}`, C.WALL + 10, 82, '#ffe27a');
 
     // Speed clock.
     const cx = C.PLAY_R - 30;

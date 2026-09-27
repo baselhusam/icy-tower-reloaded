@@ -2,6 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     { "name": "game", "runtimeExecutable": "npx", "runtimeArgs": ["vite", "--port", "5188", "--strictPort"], "port": 5188 },
+    { "name": "arena", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev:arena"], "port": 4747 },
     { "name": "site", "runtimeExecutable": "npx", "runtimeArgs": ["vite", "preview", "--outDir", "_site", "--port", "5190", "--strictPort"], "port": 5190 }
   ]
 }

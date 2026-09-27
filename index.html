@@ -47,10 +47,18 @@
           <div class="logo-ribbon"><span>Reloaded</span></div>
         </header>
 
+        <button id="arena-bar" class="arena-bar hidden" data-action="arena">
+          <i class="live-dot"></i><b id="arena-name">Arena</b><span id="arena-meta"></span>
+        </button>
+
         <nav class="modes" aria-label="Game modes">
           <button class="item hero" data-action="endless">
             <span class="label">Endless Climb</span>
             <span class="meta" id="endless-meta">How high can you go?</span>
+          </button>
+          <button class="item cup hidden" data-action="tournament" id="cup-item">
+            <span class="label"><span id="cup-name">Tournament</span> <i class="chip live" id="cup-chip">LIVE</i></span>
+            <span class="meta" id="cup-meta"></span>
           </button>
           <button class="item" data-action="daily">
             <span class="label">Daily Tower <i class="chip" id="daily-chip">NEW</i></span>
@@ -121,13 +129,34 @@
 
       <section id="board" class="panel hidden">
         <h2>Leaderboard</h2>
-        <div class="tabs">
-          <button data-tab="endless" class="active">Endless</button>
-          <button data-tab="daily">Today</button>
-          <button data-tab="ai">AI</button>
-        </div>
+        <div class="tabs" id="board-tabs"></div>
+        <p class="board-head hidden" id="board-head"></p>
         <ol id="board-list"></ol>
-        <p class="note">Scores are stored on this device. Every run is saved as a replay, so a global board can verify them server-side.</p>
+        <p class="note" id="board-note">Scores are stored on this device. Host an arena with <code>npx icy-tower-reloaded</code> to compete with your team.</p>
+        <button data-action="back">Back</button>
+      </section>
+
+      <section id="host" class="panel hidden">
+        <h2>Host</h2>
+        <div class="host-share">
+          <span>Invite your team</span>
+          <code id="host-url"></code>
+          <a id="host-tv" target="_blank" rel="noopener">📺 Open the big-screen board</a>
+        </div>
+        <form id="host-form" class="host-form" autocomplete="off">
+          <label class="wide">Tournament <input name="name" maxlength="32" placeholder="Friday Cup" /></label>
+          <label>Length
+            <select name="minutes"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="30">30 min</option><option value="60">1 hour</option><option value="1440">1 day</option></select>
+          </label>
+          <label>Starts
+            <select name="startsIn"><option value="0">Now</option><option value="1">In 1 min</option><option value="5">In 5 min</option><option value="15">In 15 min</option></select>
+          </label>
+          <label>Attempts
+            <select name="attempts"><option value="">Unlimited</option><option value="1">1</option><option value="3">3</option><option value="5">5</option></select>
+          </label>
+          <button class="primary" type="submit">🏁 Start tournament</button>
+        </form>
+        <ul id="host-list"></ul>
         <button data-action="back">Back</button>
       </section>
 
@@ -149,6 +178,7 @@
       <section id="over" class="panel hidden">
         <h2 id="over-title">Game Over</h2>
         <div id="over-badges"></div>
+        <div id="o-arena" class="arena-result hidden"></div>
         <div class="stats">
           <div><span>Score</span><b id="o-score">0</b></div>
           <div><span>Floor</span><b id="o-floor">0</b></div>

@@ -2,13 +2,14 @@
 
 # 🐧 Icy Tower Reloaded
 
-**A browser remake of the classic Icy Tower, with more to unlock, a daily challenge, replays and an AI that plays it.**
+**A browser remake of the classic Icy Tower, with more to unlock, a daily challenge, replays and an AI that plays it. Host it on your office network for shared leaderboards and live tournaments.**
 
 Run fast, jump high, chain combos and don't fall off the bottom.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
 ![Canvas 2D](https://img.shields.io/badge/Canvas_2D-0b1e3a?logo=html5&logoColor=white)
+[![npm](https://img.shields.io/npm/v/icy-tower-reloaded?color=cb3837&logo=npm)](https://www.npmjs.com/package/icy-tower-reloaded)
 ![Runtime deps](https://img.shields.io/badge/runtime_deps-0-7fe3ff)
 ![Tests](https://img.shields.io/badge/tests-vitest-6E9F18?logo=vitest&logoColor=white)
 
@@ -22,7 +23,47 @@ Run fast, jump high, chain combos and don't fall off the bottom.
 
 ---
 
-## Quick start
+## Play with your team
+
+One person runs this on their machine (Node.js 22.13 or newer):
+
+```bash
+npx icy-tower-reloaded
+```
+
+```text
+  🐧 Icy Tower Reloaded v0.1.0 · Office Arena
+
+  🎮 Play here        http://localhost:4747
+  🌐 Share with team  http://192.168.1.14:4747
+  📺 Big screen       http://192.168.1.14:4747/tv
+  🔑 Host link        http://192.168.1.14:4747/?admin=x7Qp2mR9aLc4
+  💾 Database         ~/.icy-tower-reloaded/arena.db
+```
+
+Everyone else on the same network opens the **Share with team** link. Nobody else installs anything.
+
+- **Shared leaderboards.** All-time Endless, today's Daily Tower, each tournament, and a **Characters** board that shows which climber holds each record and how often each one gets picked.
+- **Tournaments.** The host starts one from the 🎛️ panel (click the green arena pill on the title screen) or from the terminal. Everyone gets the same tower, a countdown and an optional limit on attempts. When the clock runs out, runs still in progress end with *Time's up!* and count as they stand. A few seconds later the winner is announced to everyone.
+- **Live.** The title screen shows who's online and who's climbing. During a run, rivals on the same board appear as name tags on the tower wall at the floor they've reached. Toasts pop up when someone makes the podium.
+- **Big-screen board** at `/tv` for the office TV: tournament standings with a countdown, who's climbing right now (with live floor bars), all-time top 5, character records and a feed of new bests.
+- **Scores can't be faked.** The client never sends a score. It sends the replay (seed + inputs), and the server re-runs the deterministic engine to get the real result. A 10-minute run verifies in about 20 ms. The server hands out the seeds, so you can't shop for an easy tower. It also rejects runs that are longer than the time since they started.
+- **Zero runtime dependencies.** Storage is Node's built-in SQLite (`node:sqlite`) in one file. Live updates use Server-Sent Events, which get through proxies that block WebSockets. The whole package is about 60 kB.
+
+### Arena CLI
+
+| Command | What it does |
+| --- | --- |
+| `npx icy-tower-reloaded` | Start the arena (`--port 4747`, `--host 0.0.0.0`, `--name "Office Arena"`, `--db <file>`, `--open`) |
+| `npx icy-tower-reloaded scores [daily \| <tournament-id>]` | Print a leaderboard in the terminal, e.g. to paste into Slack |
+| `npx icy-tower-reloaded tournament create "Friday Cup" --minutes 30 --attempts 3 --starts-in 5` | Schedule a tournament. A running arena picks it up within 2 seconds |
+| `npx icy-tower-reloaded tournament list` / `tournament end <id>` | See and end tournaments |
+
+`PORT`, `HOST`, `ICY_TOWER_DB`, `ICY_TOWER_ARENA` and `ICY_TOWER_ADMIN_KEY` work as environment variables too. Requests from the host's own machine are always allowed to host. Anyone who opens the **Host link** once also gets tournament controls on that device.
+
+Players are identified by a random token kept in their browser, and everything lives in one SQLite file. To start a fresh season, point `--db` at a new file.
+
+## Develop
 
 ```bash
 npm install
@@ -33,10 +74,14 @@ Then open **http://localhost:5173** and press <kbd>Enter</kbd>.
 
 | Command | What it does |
 | --- | --- |
-| `npm run dev` | Start the game with hot reload |
-| `npm run build` | Type-check and build a static bundle into `dist/` |
-| `npm test` | Engine determinism and replay verification tests |
+| `npm run dev` | The game alone, with hot reload (offline mode, like GitHub Pages) |
+| `npm run dev:arena` | Arena server + game with hot reload on **http://localhost:4747** (dev database in `.arena/`) |
+| `npm run build` | Type-check, then build the game into `dist/client/` and the arena CLI into `dist/server/` |
+| `npm start` | Run the built arena |
+| `npm test` | Engine determinism, replay verification and arena API tests |
 | `npm run bot` | Headless AI benchmark (`npm run bot -- <games> <seed>`) |
+
+`npm pack` / `npm publish` build first (`prepack`), and the package only ships `dist/`.
 
 ## How to play
 
@@ -118,9 +163,12 @@ src/engine/   Pure, deterministic simulation: no DOM, no Date, no Math.random
 src/agents/   Agent interface (observe → input bits) + PlannerAgent ("Frosty")
 src/render/   Canvas renderer, zone themes, particles (driven by engine events)
 src/meta/     Profile, XP, achievements, leaderboards (localStorage)
+src/net/      Arena client + the wire protocol shared with the server
+src/tv/       Big-screen live board (/tv)
 src/main.ts   Game loop (fixed 60 Hz + interpolation), menus, pilots (human / AI / replay)
-scripts/      Headless bot benchmark
-tests/        Determinism, cloning, replay round-trip
+server/       The arena: CLI, HTTP API, SSE live hub, SQLite store, replay verification
+scripts/      Headless bot benchmark, GitHub Pages build
+tests/        Determinism, cloning, replay round-trip, arena API
 ```
 
 ### Write your own agent
@@ -141,11 +189,15 @@ See [`scripts/bot.ts`](scripts/bot.ts) for a headless benchmark loop. In the bro
 
 ## Roadmap
 
-1. **Global leaderboard.** The client submits a replay, the server runs `simulateReplay()` and stores the verified score, so a score can't be faked over the network.
+1. ~~**Verified leaderboards.**~~ Shipped as the LAN arena (`npx icy-tower-reloaded`). Next step: a hosted global one.
 2. **AI agent arena.** An HTTP/WebSocket API around `observe()`/`step()` lets outside agents (LLMs, Python RL bots) play headless, with their own leaderboard.
 3. **Shareable ghosts.** A link that carries a replay, so friends can race each other's runs.
-4. **Weekly seasons, cosmetic unlocks** (scarves and hats bought with gems), and **async multiplayer races** on the same seed.
+4. **Weekly seasons, cosmetic unlocks** (scarves and hats bought with gems), and **live ghosts** of rivals in tournaments. The arena already streams everyone's floor; streaming their inputs would let you see them climb.
 
 <div align="center">
 <sub>All screenshots and GIFs are real gameplay, recorded headlessly from the dev build with Frosty at the controls.</sub>
 </div>
+
+## License
+
+[MIT](LICENSE)
