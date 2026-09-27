@@ -34,3 +34,25 @@ jobs:
       - run: npm ci
       # prepublishOnly runs the tests and prepack runs the build.
       - run: npm publish
+
+  # A separate job so a failed release can be re-run without publishing to npm again.
+  release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --generate-notes --notes "$(cat <<EOF
+          Published to npm: [icy-tower-reloaded@$version](https://www.npmjs.com/package/icy-tower-reloaded/v/$version)
+
+          \`\`\`bash
+          npx icy-tower-reloaded@$version
+          \`\`\`
+          EOF
+          )"
