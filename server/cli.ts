@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { hostname } from 'node:os';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { tournamentStatus } from '../src/net/protocol';
+import { REMOVED_DAYS, tournamentStatus } from '../src/net/protocol';
 import { Store } from './db';
 import { c, DEFAULT_DB, DEFAULT_PORT, packageVersion, printBanner, startArena } from './serve';
 
@@ -14,6 +14,7 @@ ${c.bold('Usage')}
   npx icy-tower-reloaded [serve] [options]      start the arena (default)
   npx icy-tower-reloaded scores [board]         print a leaderboard
   npx icy-tower-reloaded tournament <command>   manage tournaments
+  npx icy-tower-reloaded players [command]      list climbers, reset a forgotten PIN
 
 ${c.bold('Serve options')}
   -p, --port <n>         port to listen on            (default ${DEFAULT_PORT}, env PORT)
@@ -33,6 +34,10 @@ ${c.bold('Tournaments')}
   tournament list
   tournament create "<name>" --minutes 30 [--attempts 3] [--starts-in 5]
   tournament end <id>
+
+${c.bold('Players')}
+  players                     everyone, plus climbers removed in the last ${REMOVED_DAYS} days
+  players reset-pin "<name>"  remove a climber's PIN so they can pick it again
 
 ${c.bold('Other')}
   -v, --version          print the version
@@ -89,6 +94,9 @@ async function main() {
     case 'tournament':
     case 'tournaments':
       return tournament(db, args, v);
+    case 'players':
+    case 'player':
+      return players(db, args);
     default:
       fail(`Unknown command "${command}". Try --help.`);
   }
@@ -193,6 +201,39 @@ async function tournament(db: string, args: string[], v: Record<string, string |
       return void console.log(`\n  ${c.green('✔')} Ended ${c.bold(t.name)}.\n`);
     }
     fail(`Unknown tournament command "${sub}". Use list, create or end.`);
+  } finally {
+    store.close();
+  }
+}
+
+async function players(db: string, args: string[]) {
+  const store = await Store.open(db);
+  try {
+    const [sub = 'list', arg] = args;
+    if (sub === 'list' || sub === 'ls') {
+      const list = store.roster();
+      console.log(`\n  🐧 ${c.bold(`${list.length} climber${list.length === 1 ? '' : 's'}`)}\n`);
+      for (const p of list) {
+        const best = p.best ? `best ${p.best.toLocaleString()}` : 'no endless runs';
+        console.log(`  ${p.name.padEnd(17)} ${c.dim(`${p.pin ? '🔒 ' : ''}${best} · ${p.runs} run${p.runs === 1 ? '' : 's'} · seen ${new Date(p.lastSeen).toLocaleString()}`)}`);
+      }
+      const removed = store.removedPlayers(REMOVED_DAYS * 24 * 60 * 60_000);
+      if (removed.length) {
+        console.log(`\n  ${c.dim('Removed (anyone can restore them from the game until they are purged):')}`);
+        for (const p of removed) {
+          console.log(`  ${c.dim(`${p.name.padEnd(17)} removed ${new Date(p.removedAt).toLocaleString()}${p.removedBy ? ` by ${p.removedBy}` : ''} · purged ${new Date(p.purgeAt).toLocaleDateString()}`)}`);
+        }
+      }
+      return void console.log('');
+    }
+    if (sub === 'reset-pin') {
+      const p = arg ? store.playerByName(arg) : null;
+      if (!p || p.removed) fail(`No climber called "${arg ?? ''}". See: players`);
+      if (!p.pin) return void console.log(`\n  ${c.bold(p.name)} has no PIN.\n`);
+      store.setPin(p.id, null);
+      return void console.log(`\n  ${c.green('✔')} Removed ${c.bold(p.name)}'s PIN. They can pick their climber and set a new one.\n`);
+    }
+    fail(`Unknown players command "${sub}". Use list or reset-pin.`);
   } finally {
     store.close();
   }

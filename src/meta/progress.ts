@@ -1,6 +1,6 @@
 // Everything that persists between runs: profile, lifetime stats, achievements, XP/levels,
-// local leaderboards and best replays (used as ghosts). Browser-local for now; the shapes
-// here are what a global leaderboard API would accept.
+// local leaderboards and best replays (used as ghosts). Browser-local, one profile per arena
+// climber on this device; the arena itself only keeps name, look and verified runs.
 import type { Replay } from '../engine/replay';
 import type { GameState } from '../engine/sim';
 import { DEFAULT_LOOK, sanitizeLook, type Look } from '../render/characters';
@@ -86,9 +86,9 @@ function blankProfile(): Profile {
   };
 }
 
-export function loadProfile(): Profile {
+function readProfile(key: string): Profile | null {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(key);
     if (raw) {
       const p = JSON.parse(raw) as Profile;
       const base = blankProfile();
@@ -97,12 +97,32 @@ export function loadProfile(): Profile {
   } catch {
     /* storage unavailable: play without persistence */
   }
-  return blankProfile();
+  return null;
+}
+
+let slot = KEY;
+
+/** This device's own profile, used when there's no arena. */
+export function loadProfile(): Profile {
+  return readProfile(KEY) ?? blankProfile();
+}
+
+/**
+ * The local progress (XP, achievements, ghosts) of an arena climber on this device, so people
+ * sharing a machine don't share levels. The device profile carries over to the climber with its
+ * name, which is who it belonged to before arenas had climbers. Sound settings stay per device.
+ */
+export function loadClimberProfile(id: string, name: string, device: Pick<Profile, 'muted' | 'music'>): Profile {
+  slot = `${KEY}:${id}`;
+  const own = readProfile(slot);
+  const legacy = own ? null : readProfile(KEY);
+  const p = own ?? (legacy && legacy.name.toLowerCase() === name.toLowerCase() ? legacy : blankProfile());
+  return { ...p, name, muted: device.muted, music: device.music };
 }
 
 export function saveProfile(p: Profile) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(p));
+    localStorage.setItem(slot, JSON.stringify(p));
   } catch {
     /* ignore quota / privacy mode */
   }

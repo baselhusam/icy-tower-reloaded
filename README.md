@@ -43,6 +43,7 @@ npx icy-tower-reloaded
 
 Everyone else on the same network opens the **Share with team** link. Nobody else installs anything.
 
+- **Climbers.** Every visit starts on *Who's climbing?*: continue as yourself, pick your climber from the list or make a new one. Names are unique, and your scores follow your climber to any machine. Add an optional 4-digit PIN so nobody else can play as you. There's no admin: anyone can remove a climber (they vanish from every board), and anyone can restore them from *Recently removed* for 7 days, after which they're deleted for good.
 - **Shared leaderboards.** All-time Endless, today's Daily Tower, each tournament, and a **Characters** board that shows which climber holds each record and how often each one gets picked.
 - **Tournaments.** The host starts one from the 🎛️ panel (click the green arena pill on the title screen) or from the terminal. Everyone gets the same tower, a countdown and an optional limit on attempts. When the clock runs out, runs still in progress end with *Time's up!* and count as they stand. A few seconds later the winner is announced to everyone.
 - **Live.** The title screen shows who's online and who's climbing. During a run, rivals on the same board appear as name tags on the tower wall at the floor they've reached. Toasts pop up when someone makes the podium.
@@ -58,10 +59,11 @@ Everyone else on the same network opens the **Share with team** link. Nobody els
 | `npx icy-tower-reloaded scores [daily \| <tournament-id>]` | Print a leaderboard in the terminal, e.g. to paste into Slack |
 | `npx icy-tower-reloaded tournament create "Friday Cup" --minutes 30 --attempts 3 --starts-in 5` | Schedule a tournament. A running arena picks it up within 2 seconds |
 | `npx icy-tower-reloaded tournament list` / `tournament end <id>` | See and end tournaments |
+| `npx icy-tower-reloaded players` / `players reset-pin "<name>"` | List climbers (and recently removed ones), or clear a forgotten PIN |
 
 `PORT`, `HOST`, `ICY_TOWER_DB`, `ICY_TOWER_ARENA` and `ICY_TOWER_ADMIN_KEY` work as environment variables too. Requests from the host's own machine are always allowed to host. Anyone who opens the **Host link** once also gets tournament controls on that device.
 
-Players are identified by a random token kept in their browser, and everything lives in one SQLite file. To start a fresh season, point `--db` at a new file.
+Picking a climber gives that browser a session token, so the same climber can play on several machines at once. XP, achievements and ghosts stay on each device (one set per climber); names, looks and verified runs live on the arena. Everything lives in one SQLite file, and databases from older versions are upgraded in place (duplicate names become "Sam 2"). To start a fresh season, point `--db` at a new file.
 
 ## Develop
 

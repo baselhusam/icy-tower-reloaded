@@ -136,6 +136,7 @@ function onEvent(ev: ServerEvent) {
       break;
     }
     case 'tournaments':
+    case 'roster': // a removed or restored climber changes the boards
       refreshSoon();
       break;
     case 'tournamentResult': {

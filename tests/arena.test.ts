@@ -3,7 +3,12 @@ import { observe } from '../src/agents/api';
 import { PlannerAgent } from '../src/agents/planner';
 import { InputRecorder, type Replay } from '../src/engine/replay';
 import { createGame, step } from '../src/engine/sim';
-import type { BoardEntry, FinishedRun, Hello, PlayerAuth, ServerEvent, StartedRun, Tournament } from '../src/net/protocol';
+import { createHash } from 'node:crypto';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { BoardEntry, FinishedRun, Hello, Me, PlayerAuth, Roster, ServerEvent, StartedRun, Tournament } from '../src/net/protocol';
+import { Store } from '../server/db';
 import { startArena, type RunningArena } from '../server/serve';
 
 let arena: RunningArena;
@@ -202,5 +207,127 @@ describe('tournament clock', () => {
     const res = await api<{ error: string }>(`/api/runs/${run.runId}/finish`, { body: { replay: { version: 1, seed: run.seed, inputs: '2a', ticks: 10, score: 0, floor: 0 } }, auth: me });
     expect(res.status).toBe(422);
     expect(res.data.error).toMatch(/did not end/);
+  });
+});
+
+describe('climbers', () => {
+  const create = (name: string, pin?: string) => api<PlayerAuth>('/api/players', { body: { name, look: { char: 'pip' }, pin } });
+
+  it('keeps names unique, ignoring case', async () => {
+    const first = await create('Hadi');
+    expect(first.status).toBe(200);
+    const again = await create('  hADI ');
+    expect(again.status).toBe(409);
+    expect((again.data as unknown as { error: string }).error).toMatch(/taken/);
+    expect((await create('   ')).status).toBe(400);
+
+    const other = await create('Yara');
+    const rename = await api('/api/me', { method: 'PUT', body: { name: 'hadi' }, auth: other.data });
+    expect(rename.status).toBe(409);
+    const ok = await api<Me>('/api/me', { method: 'PUT', body: { name: 'Yara B' }, auth: other.data });
+    expect(ok.data.name).toBe('Yara B');
+  });
+
+  it('lets anyone pick a climber, and asks for the PIN when there is one', async () => {
+    const open = await create('Karim');
+    const { data: roster } = await api<Roster>('/api/players');
+    expect(roster.players.find((p) => p.id === open.data.id)).toMatchObject({ name: 'Karim', pin: false, runs: 0 });
+
+    // Another device picks Karim: a second session, and the first one keeps working.
+    const { data: second } = await api<PlayerAuth>(`/api/players/${open.data.id}/claim`, { body: {} });
+    expect(second.token).not.toBe(open.data.token);
+    expect((await api<Me>('/api/me', { auth: second })).data.name).toBe('Karim');
+    expect((await api<Me>('/api/me', { auth: open.data })).status).toBe(200);
+
+    const locked = await create('Dana', '4321');
+    expect((await api<Roster>('/api/players')).data.players.find((p) => p.name === 'Dana')?.pin).toBe(true);
+    expect((await api(`/api/players/${locked.data.id}/claim`, { body: {} })).status).toBe(403);
+    expect((await api(`/api/players/${locked.data.id}/claim`, { body: { pin: '0000' } })).status).toBe(403);
+    expect((await api<PlayerAuth>(`/api/players/${locked.data.id}/claim`, { body: { pin: '4321' } })).status).toBe(200);
+    expect((await create('Bad PIN', '12a4')).status).toBe(400);
+
+    // Guessing gets you locked out for a while, even with the right PIN.
+    for (let i = 0; i < 5; i++) await api(`/api/players/${locked.data.id}/claim`, { body: { pin: '1111' } });
+    expect((await api(`/api/players/${locked.data.id}/claim`, { body: { pin: '4321' } })).status).toBe(429);
+  });
+
+  it('changes a PIN only with the current one, and signs out', async () => {
+    const { data: me } = await create('Tala', '1234');
+    expect((await api('/api/me/pin', { method: 'PUT', body: { pin: '5555' }, auth: me })).status).toBe(403);
+    const { data: changed } = await api<Me>('/api/me/pin', { method: 'PUT', body: { pin: null, current: '1234' }, auth: me });
+    expect(changed.pin).toBe(false);
+    expect((await api<PlayerAuth>(`/api/players/${me.id}/claim`, { body: {} })).status).toBe(200);
+
+    expect((await api('/api/me/logout', { body: {}, auth: me })).status).toBe(204);
+    expect((await api('/api/me', { auth: me })).status).toBe(401);
+  });
+
+  it('removes a climber from every board, and anyone can bring them back', async () => {
+    const { data: me } = await create('Zaid');
+    const { data: run } = await api<StartedRun>('/api/runs', { body: { mode: 'endless' }, auth: me });
+    backdate(run.runId);
+    await api(`/api/runs/${run.runId}/finish`, { body: { replay: playGame(run.seed) }, auth: me });
+    const onBoard = async () => (await api<BoardEntry[]>('/api/boards/endless?limit=500')).data.some((e) => e.playerId === me.id);
+    expect(await onBoard()).toBe(true);
+
+    const { data: remover } = await create('Maha');
+    expect((await api(`/api/players/${me.id}`, { method: 'DELETE', auth: remover })).status).toBe(204);
+    expect((await api(`/api/players/${me.id}`, { method: 'DELETE' })).status).toBe(404);
+    expect(await onBoard()).toBe(false);
+    expect((await api('/api/me', { auth: me })).status).toBe(401);
+    expect((await api(`/api/players/${me.id}/claim`, { body: {} })).status).toBe(404);
+    const { data: roster } = await api<Roster>('/api/players');
+    expect(roster.players.some((p) => p.id === me.id)).toBe(false);
+    expect(roster.removed.find((p) => p.id === me.id)).toMatchObject({ name: 'Zaid', removedBy: 'Maha' });
+
+    // Someone takes the name meanwhile; the restored climber comes back as "Zaid 2", scores intact.
+    expect((await create('zaid')).status).toBe(200);
+    const { data: back } = await api<Me>(`/api/players/${me.id}/restore`, { body: {} });
+    expect(back.name).toBe('Zaid 2');
+    expect(await onBoard()).toBe(true);
+    expect((await api<Me>('/api/me', { auth: me })).data.name).toBe('Zaid 2');
+  });
+
+  it('purges climbers removed long enough ago, runs and all', async () => {
+    const { data: me } = await create('Old Timer');
+    await api<StartedRun>('/api/runs', { body: { mode: 'endless' }, auth: me });
+    await api(`/api/players/${me.id}`, { method: 'DELETE' });
+    expect(arena.store.purgeRemoved(Date.now() - 60_000)).toBe(0); // too recent
+    expect(arena.store.purgeRemoved(Date.now() + 1)).toBeGreaterThanOrEqual(1);
+    expect(arena.store.db.prepare('SELECT COUNT(*) AS n FROM runs WHERE player_id = ?').get(me.id)).toEqual({ n: 0 });
+    expect((await api<Me>(`/api/players/${me.id}/restore`, { body: {} })).status).toBe(404);
+  });
+});
+
+describe('database upgrade', () => {
+  it('moves v1 tokens into sessions and makes duplicate names unique', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'icy-arena-'));
+    const file = join(dir, 'arena.db');
+    try {
+      const { DatabaseSync } = await import('node:sqlite');
+      const v1 = new DatabaseSync(file);
+      v1.exec(`
+        CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        INSERT INTO meta VALUES ('schema_version', '1');
+        CREATE TABLE players (id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, name TEXT NOT NULL, look TEXT NOT NULL,
+                              created_at INTEGER NOT NULL, last_seen INTEGER NOT NULL);`);
+      const hash = (t: string) => createHash('sha256').update(t).digest('hex');
+      const add = v1.prepare('INSERT INTO players VALUES (?, ?, ?, ?, ?, ?)');
+      add.run('a', hash('tok-a'), 'Sam', '{}', 1, 1);
+      add.run('b', hash('tok-b'), 'sam', '{}', 2, 2);
+      add.run('c', hash('tok-c'), 'Sam 2', '{}', 3, 3);
+      v1.close();
+
+      const store = await Store.open(file);
+      expect(store.getMeta('schema_version')).toBe('2');
+      expect(store.authenticate('a', 'tok-a')?.name).toBe('Sam');
+      expect(store.authenticate('b', 'tok-b')?.name).toBe('sam 3'); // "Sam 2" was already someone
+      expect(store.authenticate('c', 'tok-c')?.name).toBe('Sam 2');
+      expect(store.createPlayer('SAM', { char: 'pip', hat: 'none', color: 0, extra: 'none' }, null)).toBeNull();
+      store.close();
+      (await Store.open(file)).close(); // opening again is a no-op
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

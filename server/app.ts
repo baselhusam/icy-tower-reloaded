@@ -7,13 +7,17 @@ import { extname, join, resolve, sep } from 'node:path';
 import { dailySeedKey, hashSeed } from '../src/engine/rng';
 import {
   APP_ID,
+  PIN_LENGTH,
   PLAYER_NAME_MAX,
+  REMOVED_DAYS,
   TOURNAMENT_NAME_MAX,
   type BoardEntry,
   type FinishedRun,
   type Hello,
+  type Me,
   type NewTournament,
   type PlayerAuth,
+  type Roster,
   type StartedRun,
   type Tournament,
 } from '../src/net/protocol';
@@ -42,6 +46,10 @@ const TOURNAMENT_GRACE_MS = 60_000;
 /** Results are announced once the last runs have had time to land. */
 const RESULTS_DELAY_MS = 8_000;
 const MAX_BODY = 2_500_000;
+const REMOVED_MS = REMOVED_DAYS * 24 * 60 * 60_000;
+/** Wrong PINs allowed per climber before a cool-down, so nobody can just try all 10,000. */
+const PIN_TRIES = 5;
+const PIN_LOCK_MS = 60_000;
 
 class HttpError extends Error {
   constructor(
@@ -68,6 +76,16 @@ const cleanName = (raw: unknown, max: number, fallback: string) => {
   // eslint-disable-next-line no-control-regex
   const s = String(raw ?? '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
   return s || fallback;
+};
+
+const PIN_RE = new RegExp(`^\\d{${PIN_LENGTH}}$`);
+
+/** A new PIN from a request: undefined/null/"" mean none, anything else must be PIN_LENGTH digits. */
+const parsePin = (raw: unknown): string | null => {
+  if (raw == null || raw === '') return null;
+  const pin = String(raw);
+  if (!PIN_RE.test(pin)) throw new HttpError(400, `A PIN is ${PIN_LENGTH} digits`);
+  return pin;
 };
 
 const num = (v: unknown, min: number, max: number, fallback: number) => {
@@ -104,17 +122,86 @@ export function createArena(opts: ArenaOptions) {
     presence: live.presence(),
   }));
 
-  // Create a player, or update the calling player's name and outfit.
-  route('POST', '/api/players', async ({ req, body }): Promise<PlayerAuth> => {
+  // ---- players ----------------------------------------------------------------------------------
+  // No accounts and no admin: anyone can pick a climber (or prove it with its PIN), make a new
+  // one, or remove one. Removal is soft, so anyone can undo it for REMOVED_DAYS.
+
+  const pinFails = new Map<string, { n: number; until: number }>();
+  function checkPin(playerId: string, pin: unknown) {
+    const f = pinFails.get(playerId);
+    if (f && f.until > Date.now()) throw new HttpError(429, 'Too many wrong PINs. Try again in a minute.');
+    if (!pin) throw new HttpError(403, 'This climber has a PIN');
+    if (store.checkPin(playerId, String(pin))) return void pinFails.delete(playerId);
+    const n = (f && !f.until ? f.n : 0) + 1; // a served cool-down starts the count again
+    pinFails.set(playerId, { n, until: n >= PIN_TRIES ? Date.now() + PIN_LOCK_MS : 0 });
+    throw new HttpError(403, 'Wrong PIN');
+  }
+
+  const roster = (): Roster => ({ players: store.roster(), removed: store.removedPlayers(REMOVED_MS) });
+  const nameTaken = (name: string) => new HttpError(409, `"${name}" is already taken. Pick another name.`);
+
+  route('GET', '/api/players', roster);
+
+  route('POST', '/api/players', async ({ body }): Promise<PlayerAuth> => {
     const b = await body();
-    const name = cleanName(b.name, PLAYER_NAME_MAX, 'Player');
-    const look = sanitizeLook(b.look);
+    const name = cleanName(b.name, PLAYER_NAME_MAX, '');
+    if (!name) throw new HttpError(400, 'Pick a name');
+    const auth = store.createPlayer(name, sanitizeLook(b.look), parsePin(b.pin));
+    if (!auth) throw nameTaken(name);
+    live.broadcast({ type: 'roster', change: 'added', player: { id: auth.id, name } });
+    return auth;
+  });
+
+  // Play as an existing climber on this device.
+  route('POST', '/api/players/:id/claim', async ({ params, body }): Promise<PlayerAuth> => {
+    const p = store.player(params[0]);
+    if (!p) throw new HttpError(404, 'That climber was removed');
+    const b = await body();
+    if (p.pin) checkPin(p.id, b.pin);
+    return { id: p.id, token: store.newSession(p.id) };
+  });
+
+  route('DELETE', '/api/players/:id', ({ req, params }) => {
     const auth = parseAuth(req);
-    if (auth && store.authenticate(auth.id, auth.token)) {
-      store.updatePlayer(auth.id, name, look);
-      return auth;
-    }
-    return store.createPlayer(name, look);
+    const by = (auth && store.authenticate(auth.id, auth.token)?.name) ?? null;
+    const p = store.removePlayer(params[0], by);
+    if (!p) throw new HttpError(404, 'That climber was already removed');
+    live.broadcast({ type: 'roster', change: 'removed', player: { id: p.id, name: p.name }, by });
+    return null;
+  });
+
+  route('POST', '/api/players/:id/restore', ({ params }): Me => {
+    const p = store.restorePlayer(params[0]);
+    if (!p) throw new HttpError(404, 'That climber is gone for good');
+    live.broadcast({ type: 'roster', change: 'restored', player: { id: p.id, name: p.name } });
+    return p;
+  });
+
+  route('GET', '/api/me', ({ player }): Me => player());
+
+  // Rename or restyle the signed-in climber.
+  route('PUT', '/api/me', async ({ body, player }): Promise<Me> => {
+    const p = player();
+    const b = await body();
+    const name = cleanName(b.name, PLAYER_NAME_MAX, p.name);
+    if (!store.updatePlayer(p.id, name, sanitizeLook(b.look ?? p.look))) throw nameTaken(name);
+    if (name !== p.name) live.broadcast({ type: 'roster', change: 'updated', player: { id: p.id, name } });
+    return store.player(p.id)!;
+  });
+
+  route('PUT', '/api/me/pin', async ({ body, player }): Promise<Me> => {
+    const p = player();
+    const b = await body();
+    if (p.pin) checkPin(p.id, b.current);
+    store.setPin(p.id, parsePin(b.pin));
+    live.broadcast({ type: 'roster', change: 'updated', player: { id: p.id, name: p.name } });
+    return store.player(p.id)!;
+  });
+
+  route('POST', '/api/me/logout', ({ req, player }) => {
+    player();
+    store.endSession(parseAuth(req)!.token);
+    return null;
   });
 
   // EventSource can't send headers, so the player id (not the token) rides in the query. It only
@@ -301,6 +388,10 @@ export function createArena(opts: ArenaOptions) {
     .map((t) => `${t.id}:${t.status}:${t.endsAt}`)
     .join('|');
 
+  const purge = () => store.purgeRemoved(Date.now() - REMOVED_MS);
+  purge();
+  const purger = setInterval(purge, 60 * 60_000);
+
   // ---- request handling ---------------------------------------------------------------------------
 
   async function handle(req: IncomingMessage, res: ServerResponse) {
@@ -357,6 +448,7 @@ export function createArena(opts: ArenaOptions) {
     live,
     close() {
       clearInterval(clock);
+      clearInterval(purger);
       live.close();
     },
   };

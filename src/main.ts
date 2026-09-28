@@ -8,12 +8,26 @@ import { dailySeedKey, hashSeed } from './engine/rng';
 import { createGame, step, type GameEvent, type GameState } from './engine/sim';
 import { Controls } from './input';
 import { Music, type MusicMood } from './music';
-import { ArenaClient } from './net/arena';
-import { tournamentStatus, type BoardEntry, type CharacterStat, type ServerEvent, type StartedRun, type Tournament, type TournamentStatus } from './net/protocol';
+import { ApiError, ArenaClient } from './net/arena';
+import {
+  PIN_LENGTH,
+  REMOVED_DAYS,
+  tournamentStatus,
+  type BoardEntry,
+  type CharacterStat,
+  type Me,
+  type Roster,
+  type RosterEntry,
+  type ServerEvent,
+  type StartedRun,
+  type Tournament,
+  type TournamentStatus,
+} from './net/protocol';
 import {
   ACHIEVEMENTS,
   boardKey,
   levelFromXp,
+  loadClimberProfile,
   loadProfile,
   recordRun,
   saveProfile,
@@ -44,7 +58,7 @@ interface Session {
 }
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
-const panels = ['menu', 'help', 'board', 'achievements', 'pause', 'over', 'wardrobe', 'host'];
+const panels = ['menu', 'who', 'help', 'board', 'achievements', 'pause', 'over', 'wardrobe', 'host'];
 
 const canvas = $<HTMLCanvasElement>('#game');
 const renderer = new Renderer(canvas);
@@ -86,7 +100,10 @@ function untilNextDaily(): string {
 }
 
 function renderMenu() {
+  // With an arena, you play as a climber; pick one first.
+  if (arena.connected && !arena.me) return void openWho();
   $<HTMLInputElement>('#name').value = profile.name;
+  $('#pc-switch').classList.toggle('hidden', !arena.me);
   $<HTMLImageElement>('#pc-avatar').src = avatarURL(profile.look);
   const lv = levelFromXp(profile.xp);
   $('#lvl').textContent = `${lv.level}`;
@@ -350,12 +367,21 @@ $('#wardrobe').addEventListener('click', (e) => {
   else if (d.wd === 'random') setLook(randomLook());
 });
 
-function toast(icon: string, title: string, desc: string) {
+function toast(icon: string, title: string, desc: string, action?: { label: string; run: () => void }) {
   const el = document.createElement('div');
-  el.className = 'toast';
+  el.className = `toast${action ? ' actionable' : ''}`;
   el.innerHTML = `<span class="icon">${icon}</span><div><b>${escapeHtml(title)}</b>${escapeHtml(desc)}</div>`;
+  if (action) {
+    const btn = document.createElement('button');
+    btn.textContent = action.label;
+    btn.addEventListener('click', () => {
+      el.remove();
+      action.run();
+    });
+    el.appendChild(btn);
+  }
   $('#toasts').appendChild(el);
-  setTimeout(() => el.remove(), 3600);
+  setTimeout(() => el.remove(), action ? 8000 : 3600);
 }
 
 function escapeHtml(s: string) {
@@ -817,16 +843,301 @@ function renderHost() {
   if (!isOpen('host')) show('host');
 }
 
-function arenaProfile() {
-  return { name: profile.name || 'Player', look: profile.look };
+let syncTimer = 0;
+/** Saves the outfit to the arena, so everyone sees the new look. */
+function syncProfile() {
+  clearTimeout(syncTimer);
+  syncTimer = window.setTimeout(() => {
+    if (arena.me) arena.updateProfile({ name: arena.me.name, look: profile.look }).catch(() => {});
+  }, 600);
 }
 
-let syncTimer = 0;
-function syncProfile() {
-  if (!arena.connected) return;
-  clearTimeout(syncTimer);
-  syncTimer = window.setTimeout(() => arena.updateProfile(arenaProfile()).catch(() => {}), 600);
+async function renameClimber() {
+  const me = arena.me;
+  if (!me) return;
+  const input = $<HTMLInputElement>('#name');
+  if (!profile.name || profile.name === me.name) {
+    profile.name = input.value = me.name;
+    return;
+  }
+  try {
+    const updated = await arena.updateProfile({ name: profile.name, look: profile.look });
+    profile.name = input.value = updated.name;
+    saveProfile(profile);
+    toast('✏️', `You're now ${updated.name}`, 'Your scores moved with you.');
+  } catch (err) {
+    profile.name = input.value = me.name;
+    toast('⛔', "Can't use that name", (err as Error).message);
+  }
 }
+
+// ---- climbers --------------------------------------------------------------------------------------
+// With an arena, every visit starts on "Who's climbing?": continue as yourself, pick your climber
+// from the list (with its PIN, if it has one) or make a new one. There's no admin: anyone can
+// remove a climber, and anyone can restore them for REMOVED_DAYS.
+
+type WhoView = { v: 'list' } | { v: 'new' } | { v: 'removed' } | { v: 'setpin' } | { v: 'pin'; p: RosterEntry } | { v: 'remove'; p: RosterEntry };
+
+let who: WhoView = { v: 'list' };
+let roster: Roster | null = null;
+let whoFilter = '';
+let whoReq = 0;
+
+function openWho(view: WhoView = { v: 'list' }) {
+  who = view;
+  whoFilter = '';
+  if (!isOpen('who')) show('who');
+  renderWho();
+  refreshRoster();
+}
+
+async function refreshRoster() {
+  const req = ++whoReq;
+  try {
+    const r = await arena.roster();
+    if (req !== whoReq) return;
+    roster = r;
+    if (isOpen('who') && (who.v === 'list' || who.v === 'removed')) renderWho();
+  } catch {
+    /* keep showing the last list */
+  }
+}
+
+function ago(ms: number) {
+  const m = Math.floor((Date.now() - ms) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  if (m < 60 * 24) return `${Math.floor(m / 60)}h ago`;
+  return `${Math.floor(m / 60 / 24)}d ago`;
+}
+
+const pinInput = (name: string, extra = '') =>
+  `<input class="who-input pin" name="${name}" type="password" inputmode="numeric" pattern="\\d{${PIN_LENGTH}}" autocomplete="off" placeholder="${'•'.repeat(PIN_LENGTH)}" ${extra} />`;
+
+const whoHero = (p: { name: string; look: Look }) => `<div class="who-hero"><img src="${avatarURL(p.look, 96)}" alt="" /><b>${escapeHtml(p.name)}</b></div>`;
+
+const whoButtons = (submit: string, cls = 'primary') =>
+  `<p class="who-err" role="alert"></p><div class="row"><button type="button" data-who="list">Cancel</button><button class="${cls}" type="submit">${submit}</button></div>`;
+
+function whoRows(): string {
+  if (!roster) return emptyRow('Loading…');
+  const q = whoFilter.toLowerCase();
+  const list = roster.players.filter((p) => p.id !== arena.me?.id && p.name.toLowerCase().includes(q));
+  if (!list.length) return emptyRow(q ? 'Nobody by that name.' : arena.me ? 'Nobody else yet.' : 'No climbers yet. Be the first!');
+  return list
+    .map((p) => {
+      const best = p.best ? `best ${p.best.toLocaleString()}` : 'no endless runs yet';
+      const lock = p.pin ? ' <i class="who-lock" title="Has a PIN">🔒</i>' : '';
+      return `<li><button class="who-pick" data-pick="${p.id}"><img src="${avatarURL(p.look, 56)}" alt="" /><span><b>${escapeHtml(p.name)}${lock}</b><small>${best} · ${plural(p.runs, 'run')} · ${ago(p.lastSeen)}</small></span></button><button class="who-x" data-remove="${p.id}" aria-label="Remove ${escapeHtml(p.name)}" title="Remove">✕</button></li>`;
+    })
+    .join('');
+}
+
+function renderWho() {
+  const me = arena.me;
+  const body = $('#who-body');
+  const typing = document.activeElement?.id === 'who-search';
+  const title = $('#who-title');
+  switch (who.v) {
+    case 'list': {
+      title.textContent = "Who's climbing?";
+      const removed = roster?.removed.length ?? 0;
+      body.innerHTML = `
+        ${me ? `<button class="primary who-continue" data-who="continue"><img src="${avatarURL(me.look, 64)}" alt="" /><span>Continue as ${escapeHtml(me.name)}</span></button>` : ''}
+        ${(roster?.players.length ?? 0) > 6 ? `<input id="who-search" class="who-input" placeholder="Find your name" autocomplete="off" spellcheck="false" value="${escapeHtml(whoFilter)}" />` : ''}
+        <ul class="who-list" id="who-list">${whoRows()}</ul>
+        <button data-who="new">＋ New climber</button>
+        <div class="who-foot">
+          ${me ? `<button class="ghost-btn" data-who="setpin">🔒 ${me.pin ? 'Change PIN' : 'Add a PIN'}</button>` : ''}
+          ${removed ? `<button class="ghost-btn" data-who="removed">🗑 Recently removed (${removed})</button>` : ''}
+        </div>
+        <p class="note">Anyone can add or remove a climber. Removed climbers can be restored for ${REMOVED_DAYS} days.</p>`;
+      if (typing) {
+        const search = $<HTMLInputElement>('#who-search');
+        search.focus();
+        search.setSelectionRange(search.value.length, search.value.length);
+      } else body.querySelector<HTMLElement>('.who-continue')?.focus();
+      return;
+    }
+    case 'pin':
+      title.textContent = 'Enter PIN';
+      body.innerHTML = `${whoHero(who.p)}<form class="who-form" data-form="pin">${pinInput('pin', 'required')}${whoButtons('Climb')}</form>`;
+      break;
+    case 'new':
+      title.textContent = 'New climber';
+      body.innerHTML = `<form class="who-form" data-form="new">
+          <label>Name<input class="who-input" name="name" maxlength="16" required autocomplete="off" spellcheck="false" placeholder="What should we call you?" /></label>
+          <label>PIN <small>optional · asked when you pick this climber on another device</small>${pinInput('pin')}</label>
+          ${whoButtons('Create')}
+        </form>`;
+      break;
+    case 'setpin':
+      if (!me) return openWho();
+      title.textContent = me.pin ? 'Change PIN' : 'Add a PIN';
+      body.innerHTML = `${whoHero(me)}<form class="who-form" data-form="setpin">
+          ${me.pin ? `<label>Current PIN${pinInput('current', 'required')}</label>` : ''}
+          <label>New PIN <small>${me.pin ? 'leave empty to remove it' : `${PIN_LENGTH} digits`}</small>${pinInput('pin', me.pin ? '' : 'required')}</label>
+          ${whoButtons('Save')}
+        </form>`;
+      break;
+    case 'remove':
+      title.textContent = 'Remove climber';
+      body.innerHTML = `${whoHero(who.p)}
+        <p class="who-text">This hides <b>${escapeHtml(who.p.name)}</b> and their scores from every board. Anyone can restore them for ${REMOVED_DAYS} days, then they're gone for good.</p>
+        <form class="who-form" data-form="remove">
+          <label><span>Type <b>${escapeHtml(who.p.name)}</b> to confirm</span><input class="who-input" name="confirm" required autocomplete="off" spellcheck="false" /></label>
+          ${whoButtons('Remove', 'danger')}
+        </form>`;
+      break;
+    case 'removed': {
+      title.textContent = 'Recently removed';
+      const list = roster?.removed ?? [];
+      body.innerHTML = `<ul class="who-list">${
+        list
+          .map((r) => {
+            const left = Math.max(1, Math.ceil((r.purgeAt - Date.now()) / 86_400_000));
+            return `<li><div class="who-pick"><img src="${avatarURL(r.look, 56)}" alt="" /><span><b>${escapeHtml(r.name)}</b><small>removed ${ago(r.removedAt)}${r.removedBy ? ` by ${escapeHtml(r.removedBy)}` : ''} · gone in ${plural(left, 'day')}</small></span></div><button class="who-restore" data-restore="${r.id}">Restore</button></li>`;
+          })
+          .join('') || emptyRow('Nobody was removed lately.')
+      }</ul><button data-who="list">Back</button>`;
+      return;
+    }
+  }
+  body.querySelector<HTMLInputElement>('input')?.focus();
+}
+
+function whoError(msg: string) {
+  const el = document.querySelector<HTMLElement>('#who-body .who-err');
+  if (!el) return toast('⛔', 'That didn’t work', msg);
+  el.textContent = msg;
+  el.classList.remove('shake');
+  void el.offsetWidth; // restart the animation
+  el.classList.add('shake');
+}
+
+/** Switches the game over to a climber: their name, look and this device's progress for them. */
+function becomeClimber(me: Me) {
+  Object.assign(profile, loadClimberProfile(me.id, me.name, profile), { look: me.look });
+  saveProfile(profile);
+  attemptsLeft.clear();
+  loadAttempts();
+}
+
+async function pickClimber(p: RosterEntry, pin?: string) {
+  try {
+    becomeClimber(await arena.claim(p.id, pin));
+    toast('👋', `Hi, ${p.name}!`, 'Your scores count for the whole arena.');
+    renderMenu();
+  } catch (err) {
+    whoError((err as Error).message);
+    const input = document.querySelector<HTMLInputElement>('#who-body input.pin');
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
+    if (err instanceof ApiError && err.status === 404) refreshRoster();
+  }
+}
+
+async function createClimber(name: string, pin: string) {
+  try {
+    // First climber on this device keeps the outfit it already had; the next person gets a fresh one.
+    const me = await arena.createPlayer({ name, look: arena.me ? randomLook() : profile.look, pin: pin || null });
+    becomeClimber(me);
+    toast('🎉', `Welcome, ${me.name}!`, 'Pick your look, then hit Done.');
+    renderWardrobe();
+    show('wardrobe');
+  } catch (err) {
+    whoError((err as Error).message);
+  }
+}
+
+async function removeClimber(p: RosterEntry) {
+  try {
+    await arena.removePlayer(p.id);
+  } catch (err) {
+    toast('⛔', "Couldn't remove them", (err as Error).message);
+  }
+  openWho();
+}
+
+async function restoreClimber(id: string) {
+  try {
+    const back = await arena.restorePlayer(id);
+    // Restored yourself? This device's session still works.
+    if (!arena.me && (await arena.resume())?.id === back.id) {
+      becomeClimber(arena.me!);
+      renderMenu();
+    }
+  } catch (err) {
+    toast('⛔', "Couldn't restore them", (err as Error).message);
+  }
+  if (isOpen('who')) refreshRoster();
+}
+
+async function changePin(pin: string, current: string) {
+  try {
+    const me = await arena.setPin(pin || null, current || undefined);
+    toast('🔒', me.pin ? 'PIN saved' : 'PIN removed', me.pin ? "You'll need it to pick this climber on another device." : 'Anyone can pick this climber now.');
+    openWho();
+  } catch (err) {
+    whoError((err as Error).message);
+  }
+}
+
+$('#who').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && who.v !== 'list') {
+    e.stopPropagation();
+    openWho();
+  } else if (e.target instanceof HTMLInputElement) e.stopPropagation();
+});
+$('#who').addEventListener('input', (e) => {
+  const el = e.target as HTMLInputElement;
+  if (el.id === 'who-search') {
+    whoFilter = el.value;
+    $('#who-list').innerHTML = whoRows();
+  } else if (el.classList.contains('pin')) el.value = el.value.replace(/\D/g, '').slice(0, PIN_LENGTH);
+});
+$('#who').addEventListener('click', (e) => {
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-who], [data-pick], [data-remove], [data-restore]');
+  if (!el) return;
+  sfx.unlock();
+  sfx.menuMove();
+  const d = el.dataset;
+  const find = (id: string) => roster?.players.find((p) => p.id === id);
+  if (d.who === 'continue') renderMenu();
+  else if (d.who) openWho({ v: d.who } as WhoView);
+  else if (d.pick) {
+    const p = find(d.pick);
+    if (p?.pin) openWho({ v: 'pin', p });
+    else if (p) pickClimber(p);
+  } else if (d.remove) {
+    const p = find(d.remove);
+    if (p) openWho({ v: 'remove', p });
+  } else if (d.restore) restoreClimber(d.restore);
+});
+$('#who').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const form = e.target as HTMLFormElement;
+  const f = new FormData(form);
+  const val = (k: string) => String(f.get(k) ?? '').trim();
+  switch (form.dataset.form) {
+    case 'pin':
+      if (who.v === 'pin') pickClimber(who.p, val('pin'));
+      break;
+    case 'new':
+      createClimber(val('name'), val('pin'));
+      break;
+    case 'setpin':
+      changePin(val('pin'), val('current'));
+      break;
+    case 'remove':
+      if (who.v !== 'remove') break;
+      if (val('confirm').toLowerCase() !== who.p.name.toLowerCase()) whoError(`Type "${who.p.name}" exactly to confirm.`);
+      else removeClimber(who.p);
+      break;
+  }
+});
 
 function onArenaEvent(ev: ServerEvent) {
   const onMenu = !session && isOpen('menu');
@@ -856,6 +1167,21 @@ function onArenaEvent(ev: ServerEvent) {
       if (isOpen('host')) renderHost();
       if (isOpen('board')) renderBoard(true);
       break;
+    case 'roster': {
+      const { player, change } = ev;
+      if (change === 'removed' && player.id === arena.playerId) {
+        arena.me = null; // our session comes back if someone restores us
+        toast('🗑', `${ev.by ?? 'Someone'} removed you`, "Changed your mind? You're in Recently removed.", { label: 'Undo', run: () => restoreClimber(player.id) });
+        if (!session) openWho();
+      } else if (change === 'removed' && ev.by !== arena.me?.name) {
+        toast('🗑', `${ev.by ?? 'Someone'} removed ${player.name}`, `Anyone can undo it for ${REMOVED_DAYS} days.`, { label: 'Undo', run: () => restoreClimber(player.id) });
+      } else if (change === 'restored') {
+        toast('♻️', `${player.name} is back`, 'Their scores are back on the boards.');
+      }
+      if (isOpen('who')) refreshRoster();
+      if (isOpen('board')) renderBoard(true);
+      break;
+    }
     case 'tournamentResult': {
       const [first, ...rest] = ev.podium;
       if (first) {
@@ -871,12 +1197,17 @@ function onArenaEvent(ev: ServerEvent) {
 }
 
 async function connectArena() {
-  if (!(await arena.connect(arenaProfile()))) return;
+  if (!(await arena.connect())) return;
   for (const t of arena.tournaments) lastStatus.set(t.id, t.status);
   arena.on(onArenaEvent);
-  loadAttempts();
-  if (!session && isOpen('menu')) renderMenu();
-  toast('🟢', `Joined ${arena.hello!.arena}`, profile.name ? 'Your scores now count for the whole team.' : 'Pick a name below so the team knows who you are.');
+  arena.onSignedOut = () => {
+    toast('👋', 'Pick your climber again', 'The arena no longer knows this device.');
+    if (!session) openWho();
+  };
+  const me = await arena.resume();
+  if (me) becomeClimber(me);
+  if (!session) openWho();
+  toast('🟢', `Joined ${arena.hello!.arena}`, 'Scores here count for the whole team.');
 }
 
 $('#host-form').addEventListener('keydown', (e) => e.stopPropagation());
@@ -949,6 +1280,9 @@ document.addEventListener('click', (e) => {
       startMode('tournament');
       break;
     }
+    case 'who':
+      openWho();
+      break;
     case 'arena':
       if (arena.isHost) renderHost();
       else renderBoard();
@@ -991,10 +1325,13 @@ document.addEventListener('click', (e) => {
 
 $('#name').addEventListener('input', (e) => {
   profile.name = (e.target as HTMLInputElement).value.trim().slice(0, 16);
-  saveProfile(profile);
-  syncProfile();
+  if (!arena.me) saveProfile(profile); // an arena climber is renamed on the server once you're done typing
 });
-$('#name').addEventListener('keydown', (e) => e.stopPropagation());
+$('#name').addEventListener('change', renameClimber);
+$('#name').addEventListener('keydown', (e) => {
+  e.stopPropagation();
+  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+});
 $('#mute').addEventListener('click', () => {
   profile.muted = !profile.muted;
   sfx.muted = profile.muted;
@@ -1036,6 +1373,7 @@ window.addEventListener('keydown', (e) => {
   else if (isOpen('over') && e.code === 'Enter') startMode(lastMode);
   else if (isOpen('wardrobe') && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) cycleCharacter(e.code === 'ArrowLeft' ? -1 : 1);
   else if (e.code === 'Escape' && ['help', 'board', 'achievements', 'wardrobe', 'host'].some(isOpen)) renderMenu();
+  else if (e.code === 'Escape' && isOpen('who') && arena.me) renderMenu();
 });
 document.querySelectorAll<HTMLElement>('#menu .item, #menu .dock-btn').forEach((el) =>
   el.addEventListener('pointerenter', () => selectMenu(menuEntries().indexOf(el))),

@@ -82,7 +82,10 @@
         <footer class="player-card">
           <div class="lvl-ring" id="lvl-ring"><small>LV</small><b id="lvl">1</b></div>
           <div class="pc-body">
-            <input id="name" maxlength="16" placeholder="Tap to name your climber" autocomplete="off" spellcheck="false" />
+            <div class="pc-name">
+              <input id="name" maxlength="16" placeholder="Tap to name your climber" autocomplete="off" spellcheck="false" />
+              <button class="pc-switch hidden" id="pc-switch" data-action="who" title="Play as someone else">⇄ Switch</button>
+            </div>
             <div class="pc-xp">
               <div class="bar"><i id="lvl-bar"></i></div>
               <span id="lvl-xp">0 / 250 XP</span>
@@ -92,6 +95,11 @@
         </footer>
 
         <p class="press-hint"><kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>Enter</kbd> play</p>
+      </section>
+
+      <section id="who" class="panel hidden">
+        <h2 id="who-title">Who's climbing?</h2>
+        <div id="who-body"></div>
       </section>
 
       <section id="help" class="panel hidden">

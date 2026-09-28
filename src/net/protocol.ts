@@ -7,6 +7,9 @@ import type { CharId, Look } from '../render/characters';
 export const APP_ID = 'icy-tower-reloaded';
 export const PLAYER_NAME_MAX = 16;
 export const TOURNAMENT_NAME_MAX = 32;
+export const PIN_LENGTH = 4;
+/** Removed players can be restored by anyone for this long, then they're gone for good. */
+export const REMOVED_DAYS = 7;
 
 /** "endless", "daily:YYYY-MM-DD" or "tournament:<id>". */
 export type BoardKey = string;
@@ -33,6 +36,44 @@ export interface PlayerAuth {
 export interface PlayerUpdate {
   name: string;
   look: Look;
+}
+
+export interface NewPlayer extends PlayerUpdate {
+  pin?: string | null; // PIN_LENGTH digits, asked for when someone picks this climber on another device
+}
+
+/** The signed-in player. */
+export interface Me {
+  id: string;
+  name: string;
+  look: Look;
+  pin: boolean; // protected by a PIN
+}
+
+/** A climber on the "Who's climbing?" screen. */
+export interface RosterEntry extends Me {
+  best: number; // best verified Endless score
+  runs: number; // verified runs on any board
+  lastSeen: number;
+}
+
+export interface RemovedPlayer {
+  id: string;
+  name: string;
+  look: Look;
+  removedAt: number;
+  removedBy: string | null; // who removed them, if they were signed in
+  purgeAt: number; // gone for good after this
+}
+
+export interface Roster {
+  players: RosterEntry[];
+  removed: RemovedPlayer[];
+}
+
+export interface PinChange {
+  pin: string | null; // null removes the PIN
+  current?: string; // required when there is one already
 }
 
 export interface Tournament {
@@ -130,7 +171,8 @@ export type ServerEvent =
   | { type: 'presence'; presence: Presence }
   | { type: 'run'; board: BoardKey; entry: BoardEntry; personalBest: boolean }
   | { type: 'tournaments'; tournaments: Tournament[] }
-  | { type: 'tournamentResult'; tournament: Tournament; podium: BoardEntry[] };
+  | { type: 'tournamentResult'; tournament: Tournament; podium: BoardEntry[] }
+  | { type: 'roster'; change: 'added' | 'updated' | 'removed' | 'restored'; player: { id: string; name: string }; by?: string | null };
 
 export function tournamentStatus(t: { startsAt: number; endsAt: number }, now: number): TournamentStatus {
   return now < t.startsAt ? 'upcoming' : now < t.endsAt ? 'live' : 'finished';

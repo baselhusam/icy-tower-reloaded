@@ -1295,3 +1295,250 @@ kbd {
   gap: 0;
   margin-bottom: calc(var(--u) * 14);
 }
+
+/* Who's climbing? */
+.pc-name {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--u) * 6);
+}
+.pc-name input {
+  flex: 1;
+  min-width: 0;
+}
+.pc-switch {
+  flex: none;
+  width: auto;
+  padding: calc(var(--u) * 2) calc(var(--u) * 8);
+  font-size: calc(var(--u) * 11);
+  font-weight: 600;
+  color: var(--muted);
+  border-radius: 999px;
+}
+.who-continue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 8px 14px;
+}
+.who-continue img {
+  width: 40px;
+  height: 40px;
+  margin: -4px 0;
+}
+.who-continue span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.who-input {
+  width: 100%;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  padding: 9px 11px;
+  outline: none;
+  user-select: text;
+}
+.who-input:focus {
+  border-color: var(--accent);
+}
+.who-input.pin {
+  text-align: center;
+  font-size: 22px;
+  letter-spacing: 10px;
+}
+#who-search {
+  margin-bottom: 8px;
+}
+.who-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  text-align: left;
+}
+.who-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 12px;
+}
+.who-list li:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.05);
+}
+.who-list .empty {
+  display: block;
+  padding: 18px;
+  text-align: center;
+  color: var(--muted);
+}
+.who-pick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  background: none;
+  border: 1px solid transparent;
+  text-align: left;
+  font-weight: 500;
+}
+button.who-pick:hover,
+button.who-pick:focus-visible {
+  background: rgba(127, 227, 255, 0.14);
+  border-color: var(--panel-line);
+}
+.who-pick img {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, rgba(127, 227, 255, 0.28), rgba(10, 24, 52, 0.9) 72%);
+  border: 1px solid rgba(127, 227, 255, 0.25);
+}
+.who-pick span {
+  min-width: 0;
+}
+.who-pick b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.who-pick small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+.who-lock {
+  font-style: normal;
+  font-size: 11px;
+}
+.who-x,
+.who-restore {
+  flex: none;
+  width: auto;
+  margin-right: 6px;
+  padding: 5px 9px;
+  font-size: 12px;
+}
+.who-x {
+  color: var(--muted);
+  background: none;
+  border-color: transparent;
+}
+.who-x:hover {
+  color: #ffb3b3;
+  background: rgba(255, 95, 95, 0.12);
+  border-color: rgba(255, 138, 138, 0.4);
+}
+.who-foot {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0 14px;
+}
+.who-foot .ghost-btn {
+  width: auto;
+  margin-top: 6px;
+  padding: 6px 4px;
+}
+#who .note {
+  margin: 10px 0 0;
+}
+.who-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: -4px 0 12px;
+}
+.who-hero img {
+  width: 84px;
+  height: 84px;
+}
+.who-hero b {
+  font-size: 20px;
+}
+.who-text {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.who-text b {
+  color: var(--text);
+}
+.who-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+.who-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.who-form label small {
+  font-weight: 400;
+}
+.who-form label b {
+  color: var(--text);
+}
+.who-err {
+  min-height: 1em;
+  margin: -4px 0 -2px;
+  font-size: 13px;
+  color: #ffb3b3;
+  text-align: center;
+}
+.who-err:empty {
+  min-height: 0;
+  margin: 0;
+}
+.who-err.shake {
+  animation: shake 0.35s;
+}
+@keyframes shake {
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+button.danger {
+  background: linear-gradient(180deg, #ff8a8a, #d84a5c);
+  color: #2a0008;
+  border: none;
+  box-shadow: 0 4px 0 #8e2a3a;
+}
+
+/* Toasts with an Undo button can be clicked, and stay a little longer. */
+.toast.actionable {
+  pointer-events: auto;
+  animation:
+    slide 0.35s cubic-bezier(0.2, 1.4, 0.4, 1),
+    fade 0.5s 7.5s forwards;
+}
+.toast > div {
+  flex: 1;
+  min-width: 0;
+}
+.toast button {
+  flex: none;
+  width: auto;
+  padding: 5px 11px;
+  font-size: 12px;
+}

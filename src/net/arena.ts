@@ -1,17 +1,21 @@
 // Client for an arena server. When the game is served by `npx icy-tower-reloaded`, this finds
-// the API next to the page, registers the player and keeps a live event stream open. Anywhere
-// else (GitHub Pages, `npm run dev`) connect() quietly fails and the game stays offline.
+// the API next to the page, signs in as the climber picked on this device and keeps a live event
+// stream open. Anywhere else (GitHub Pages, `npm run dev`) connect() quietly fails and the game
+// stays offline.
 import type { Replay } from '../engine/replay';
-import type { Look } from '../render/characters';
 import {
   APP_ID,
   type BoardEntry,
   type CharacterStat,
   type FinishedRun,
   type Hello,
+  type Me,
+  type NewPlayer,
   type NewTournament,
   type PlayerAuth,
+  type PlayerUpdate,
   type Presence,
+  type Roster,
   type RunMode,
   type ServerEvent,
   type StartedRun,
@@ -44,7 +48,7 @@ function save(key: string, value: unknown) {
     if (value == null) localStorage.removeItem(key);
     else localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    /* private mode: we'll just register again next time */
+    /* private mode: we'll just pick a climber again next time */
   }
 }
 
@@ -54,12 +58,15 @@ export class ArenaClient {
   hello: Hello | null = null;
   presence: Presence = { online: 0, climbers: [] };
   tournaments: Tournament[] = [];
+  /** The climber this device plays as; null until one is picked. */
+  me: Me | null = null;
+  /** Called when the server stops accepting our session (the climber was removed, say). */
+  onSignedOut: (() => void) | null = null;
   private auth: PlayerAuth | null = null;
   private adminKey: string | null = load<string>(ADMIN_KEY);
   private clockSkew = 0;
   private stream: EventSource | null = null;
   private listeners = new Set<Listener>();
-  private lastProfile: { name: string; look: Look } | null = null;
   private base = new URL('api/', location.href);
 
   get connected() {
@@ -67,7 +74,7 @@ export class ArenaClient {
   }
 
   get playerId() {
-    return this.auth?.id ?? null;
+    return this.me?.id ?? null;
   }
 
   get isHost() {
@@ -84,8 +91,8 @@ export class ArenaClient {
     return () => this.listeners.delete(fn);
   }
 
-  /** Joins the arena. Without a profile it only watches (the big-screen board does that). */
-  async connect(profile?: { name: string; look: Look }): Promise<boolean> {
+  /** Finds the arena and starts listening. Picking a climber is separate (see resume()). */
+  async connect(): Promise<boolean> {
     // A host link (…/?admin=KEY) unlocks tournament controls on this device.
     const params = new URLSearchParams(location.search);
     const key = params.get('admin');
@@ -108,23 +115,74 @@ export class ArenaClient {
     } catch {
       return false;
     }
-    if (profile) {
-      this.auth = load<PlayerAuth>(AUTH_KEY);
-      try {
-        await this.updateProfile(profile);
-      } catch {
-        /* the stream below still works; we'll retry on the next profile change */
-      }
-    }
     this.openStream();
     return true;
   }
 
-  async updateProfile(profile: { name: string; look: Look }) {
-    this.lastProfile = profile;
-    if (!this.hello) return;
-    this.auth = await this.request<PlayerAuth>('POST', 'players', profile);
-    save(AUTH_KEY, this.auth);
+  /** The climber this device used last time, if the arena still knows them. */
+  async resume(): Promise<Me | null> {
+    this.auth = load<PlayerAuth>(AUTH_KEY);
+    if (!this.auth) return null;
+    try {
+      this.me = await this.request<Me>('GET', 'me');
+      this.openStream();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) this.forget();
+    }
+    return this.me;
+  }
+
+  roster(): Promise<Roster> {
+    return this.request<Roster>('GET', 'players');
+  }
+
+  async createPlayer(p: NewPlayer): Promise<Me> {
+    return this.signIn(await this.request<PlayerAuth>('POST', 'players', p));
+  }
+
+  /** Play as an existing climber; `pin` if they have one. */
+  async claim(id: string, pin?: string): Promise<Me> {
+    return this.signIn(await this.request<PlayerAuth>('POST', `players/${id}/claim`, { pin }));
+  }
+
+  /** Stop playing as this climber on this device. */
+  async signOut() {
+    if (this.auth) await this.request('POST', 'me/logout', {}).catch(() => {});
+    this.forget();
+    this.openStream();
+  }
+
+  removePlayer(id: string) {
+    return this.request('DELETE', `players/${id}`);
+  }
+
+  restorePlayer(id: string): Promise<Me> {
+    return this.request<Me>('POST', `players/${id}/restore`, {});
+  }
+
+  async updateProfile(update: PlayerUpdate): Promise<Me> {
+    this.me = await this.request<Me>('PUT', 'me', update);
+    return this.me;
+  }
+
+  async setPin(pin: string | null, current?: string): Promise<Me> {
+    this.me = await this.request<Me>('PUT', 'me/pin', { pin, current });
+    return this.me;
+  }
+
+  private async signIn(auth: PlayerAuth): Promise<Me> {
+    if (this.auth) await this.request('POST', 'me/logout', {}).catch(() => {});
+    this.auth = auth;
+    save(AUTH_KEY, auth);
+    this.me = await this.request<Me>('GET', 'me');
+    this.openStream();
+    return this.me;
+  }
+
+  private forget() {
+    this.auth = null;
+    this.me = null;
+    save(AUTH_KEY, null);
   }
 
   async startRun(mode: RunMode, tournamentId?: string): Promise<StartedRun> {
@@ -195,7 +253,7 @@ export class ArenaClient {
     };
   }
 
-  private async request<T>(method: string, path: string, body?: unknown, timeoutMs = 15000, retried = false): Promise<T> {
+  private async request<T>(method: string, path: string, body?: unknown, timeoutMs = 15000): Promise<T> {
     const headers: Record<string, string> = {};
     if (body !== undefined) headers['content-type'] = 'application/json';
     if (this.auth) headers.authorization = `Bearer ${this.auth.id}:${this.auth.token}`;
@@ -206,11 +264,11 @@ export class ArenaClient {
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    // The arena forgot us (new database): register again and retry once.
-    if (res.status === 401 && !retried && path !== 'players' && this.lastProfile) {
-      this.auth = null;
-      await this.updateProfile(this.lastProfile);
-      return this.request<T>(method, path, body, timeoutMs, true);
+    // The arena stopped knowing us (removed, or a fresh database): pick a climber again.
+    if (res.status === 401 && headers.authorization && this.me) {
+      this.forget();
+      this.openStream();
+      this.onSignedOut?.();
     }
     if (!res.ok) {
       const msg = await res
