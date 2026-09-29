@@ -15,6 +15,7 @@ const fmt = (n: number) => n.toLocaleString();
 
 function duration(ms: number) {
   const s = Math.max(0, Math.ceil(ms / 1000));
+  if (s >= 86400) return `${Math.floor(s / 86400)}d ${Math.floor((s % 86400) / 3600)}h`;
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = String(s % 60).padStart(2, '0');

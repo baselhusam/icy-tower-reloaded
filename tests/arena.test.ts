@@ -171,6 +171,19 @@ describe('arena server', () => {
   });
 });
 
+describe('tournament length', () => {
+  it('runs a week or a month, and no longer', async () => {
+    const make = (minutes: number) => api<Tournament>('/api/tournaments', { body: { name: 'Long Cup', minutes } });
+    const week = (await make(7 * 24 * 60)).data;
+    expect(week.endsAt - week.startsAt).toBe(7 * 24 * 3600_000);
+    const month = (await make(30 * 24 * 60)).data;
+    expect(month.endsAt - month.startsAt).toBe(30 * 24 * 3600_000);
+    const tooLong = (await make(365 * 24 * 60)).data;
+    expect(tooLong.endsAt - tooLong.startsAt).toBe(31 * 24 * 3600_000);
+    for (const t of [week, month, tooLong]) await api(`/api/tournaments/${t.id}`, { method: 'DELETE' });
+  });
+});
+
 describe('tournament clock', () => {
   it("accepts a run cut short by the end of the tournament, and nothing after the grace period", async () => {
     const t = arena.store.createTournament({ name: 'Sprint', startsAt: Date.now() - 1000, endsAt: Date.now() + 300, maxAttempts: null });

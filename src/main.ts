@@ -776,13 +776,17 @@ const lastStatus = new Map<string, TournamentStatus>();
 
 function duration(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
+  if (s >= 86400) return `${Math.floor(s / 86400)}d ${Math.floor((s % 86400) / 3600)}h`;
   if (s >= 3600) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
   if (s >= 60) return `${Math.floor(s / 60)}m${s < 600 ? ` ${s % 60}s` : ''}`;
   return `${s}s`;
 }
 
+/** The in-game tournament clock: 4:05, 1:04:05, or 6d 23h for week- and month-long cups. */
 function clock(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
+  if (s >= 86400) return duration(ms);
+  if (s >= 3600) return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 

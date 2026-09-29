@@ -46,6 +46,8 @@ const TOURNAMENT_GRACE_MS = 60_000;
 /** Results are announced once the last runs have had time to land. */
 const RESULTS_DELAY_MS = 8_000;
 const MAX_BODY = 2_500_000;
+/** Longest tournament, and furthest ahead one can be scheduled: a month (31 days). */
+const TOURNAMENT_MAX_MINUTES = 31 * 24 * 60;
 const REMOVED_MS = REMOVED_DAYS * 24 * 60 * 60_000;
 /** Wrong PINs allowed per climber before a cool-down, so nobody can just try all 10,000. */
 const PIN_TRIES = 5;
@@ -335,11 +337,11 @@ export function createArena(opts: ArenaOptions) {
   route('POST', '/api/tournaments', async ({ body, admin }): Promise<Tournament> => {
     admin();
     const b = (await body()) as Partial<NewTournament>;
-    const startsAt = Date.now() + num(b.startsInMinutes, 0, 7 * 24 * 60, 0) * 60_000;
+    const startsAt = Date.now() + num(b.startsInMinutes, 0, TOURNAMENT_MAX_MINUTES, 0) * 60_000;
     const t = store.createTournament({
       name: cleanName(b.name, TOURNAMENT_NAME_MAX, 'Tournament'),
       startsAt,
-      endsAt: startsAt + num(b.minutes, 1, 7 * 24 * 60, 15) * 60_000,
+      endsAt: startsAt + num(b.minutes, 1, TOURNAMENT_MAX_MINUTES, 15) * 60_000,
       maxAttempts: b.maxAttempts ? num(b.maxAttempts, 1, 1000, 3) : null,
     });
     announceTournaments();

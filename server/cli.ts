@@ -33,6 +33,7 @@ ${c.bold('Leaderboards')}
 ${c.bold('Tournaments')}
   tournament list
   tournament create "<name>" --minutes 30 [--attempts 3] [--starts-in 5]
+                         (a week is 10080 minutes, a month 43200)
   tournament end <id>
 
 ${c.bold('Players')}
@@ -174,7 +175,7 @@ async function tournament(db: string, args: string[], v: Record<string, string |
           t.status === 'upcoming'
             ? `starts ${new Date(t.startsAt).toLocaleString()}`
             : t.status === 'live'
-              ? `ends ${new Date(t.endsAt).toLocaleTimeString()}`
+              ? `ends ${t.endsAt - Date.now() > 86_400_000 ? new Date(t.endsAt).toLocaleString() : new Date(t.endsAt).toLocaleTimeString()}`
               : `ended ${new Date(t.endsAt).toLocaleString()}`;
         const badge = t.status === 'live' ? c.green('● live') : t.status === 'upcoming' ? c.yellow('◷ soon') : c.dim('■ done');
         const leader = t.leader ? `leader ${t.leader.name} (${t.leader.score.toLocaleString()})` : 'no runs yet';
