@@ -125,11 +125,15 @@ export class Renderer {
     root.style.setProperty('--game-w', `${w}px`);
     root.style.setProperty('--game-h', `${h}px`);
     root.classList.toggle('fullbleed', h >= vh - 2 && w >= vw - 2);
+    // For HTML laid over the canvas (the touch pause button sits under the speed clock).
+    root.style.setProperty('--wu', `${scale}px`);
+    root.style.setProperty('--crop', `${this.cropL}`);
     // Keep the HUD clear of notches / home indicators where the canvas touches the screen edge.
     const css = getComputedStyle(root);
     const gap = (vh - h) / 2;
     this.hudTop = Math.max(0, parseFloat(css.getPropertyValue('--sat')) - gap || 0) / scale;
     this.hudBottom = Math.max(0, parseFloat(css.getPropertyValue('--sab')) - gap || 0) / scale;
+    root.style.setProperty('--hud-top', `${this.hudTop * scale}px`);
   }
 
   reset() {

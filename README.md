@@ -89,9 +89,9 @@ Then open **http://localhost:5173** and press <kbd>Enter</kbd>.
 
 | | Keyboard | Touch |
 | --- | --- | --- |
-| Run | <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd> | ◀ ▶ pads |
-| Jump | <kbd>Space</kbd> or <kbd>↑</kbd> | ▲ pad |
-| Pause | <kbd>Esc</kbd> or <kbd>P</kbd> | |
+| Run | <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd> | Slide a thumb anywhere on the left half |
+| Jump | <kbd>Space</kbd> or <kbd>↑</kbd> | Tap anywhere on the right half |
+| Pause | <kbd>Esc</kbd> or <kbd>P</kbd> | ❚❚ under the speed clock |
 
 - **Speed is height.** The faster you run, the higher you jump.
 - **Bounce off walls** in mid-air to keep your speed.
@@ -123,7 +123,7 @@ Six themed zones, each with its own palette, cross-faded as you climb. Higher zo
 - **Personal-best marker** drawn on the tower wall, so you know when you're past it.
 - **Pickups:** 💎 gems (+25), 🚀 rocket jump, ❄️ freeze the scroll, 🧲 gem magnet.
 - **Juice:** particles, screen shake, combo ratings from "NICE" all the way to "ABSOLUTE ZERO", and synthesized sound with no audio files.
-- **Touch controls** on phones and tablets.
+- **Made for phones too:** slide-to-run and tap-to-jump over the whole screen, a ⛶ full-screen button, and a Home Screen icon that opens the game without browser bars.
 
 ### Daily Tower: race your ghost
 

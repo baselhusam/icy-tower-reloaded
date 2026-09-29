@@ -425,6 +425,8 @@ function start(mode: PlayMode, pilot: Pilot, seed: number, o: StartOptions = {})
   };
   if (pilot.kind !== 'replay') lastMode = mode;
   paused = false;
+  controls.release();
+  if (pilot.kind === 'human' && isTouch) showTouchHints();
   speed = 1;
   $('#ff-btn').textContent = '⏩ ×1';
   show(null);
@@ -1243,11 +1245,81 @@ $('#host-list').addEventListener('click', async (e) => {
   }
 });
 
+// ---- phones: touch hints and full screen ------------------------------------------------------
+
+const HINT_RUNS_KEY = 'icy-tower-reloaded:touch-hint-runs';
+const HINT_RUNS = 3;
+
+/** For a player's first few runs on a touch screen, label the two halves of the screen. */
+function showTouchHints() {
+  let runs = 0;
+  try {
+    runs = Number(localStorage.getItem(HINT_RUNS_KEY)) || 0;
+    localStorage.setItem(HINT_RUNS_KEY, String(runs + 1));
+  } catch {
+    /* no storage: always show them */
+  }
+  if (runs >= HINT_RUNS) return;
+  const touch = $('#touch');
+  touch.classList.add('hints');
+  controls.onTouch = () => {
+    controls.onTouch = null;
+    setTimeout(() => touch.classList.remove('hints'), 2500);
+  };
+}
+
+type FullscreenDoc = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => Promise<void> };
+type FullscreenEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
+const fsDoc = document as FullscreenDoc;
+const fsRoot = document.documentElement as FullscreenEl;
+const canFullscreen = !!(fsRoot.requestFullscreen || fsRoot.webkitRequestFullscreen);
+const installed = matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+const isFullscreen = () => !!(fsDoc.fullscreenElement ?? fsDoc.webkitFullscreenElement);
+
+async function toggleFullscreen() {
+  sfx.menuSelect();
+  if (isFullscreen()) {
+    await (fsDoc.exitFullscreen ?? fsDoc.webkitExitFullscreen)?.call(fsDoc).catch(() => {});
+    return;
+  }
+  if (!canFullscreen) {
+    // iPhone Safari can't take a web page full screen; a Home Screen shortcut opens without bars.
+    toast('📲', 'Play full screen', 'Tap the Share button, then "Add to Home Screen". The game opens from there without browser bars.');
+    return;
+  }
+  try {
+    if (fsRoot.requestFullscreen) await fsRoot.requestFullscreen({ navigationUI: 'hide' });
+    else await fsRoot.webkitRequestFullscreen!();
+    // The tower is tall; keep phones upright while full screen (only some browsers allow it).
+    await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('portrait').catch(() => {});
+  } catch {
+    toast('⛔', "Couldn't go full screen", 'Your browser said no. Try again from the menu.');
+  }
+}
+
+function paintFullscreen() {
+  const full = isFullscreen();
+  // Worth offering on phones and anywhere the browser supports it, unless we're already an app.
+  const offer = !installed && (canFullscreen || isTouch);
+  const btn = $('#fs-btn');
+  btn.classList.toggle('hidden', !offer);
+  btn.classList.toggle('on', full);
+  btn.title = full ? 'Exit full screen' : 'Full screen';
+  btn.setAttribute('aria-label', btn.title);
+  const toggle = $('.fs-toggle');
+  toggle.classList.toggle('hidden', !offer || !isTouch);
+  toggle.textContent = full ? '⛶ Exit full screen' : '⛶ Full screen';
+}
+document.addEventListener('fullscreenchange', paintFullscreen);
+document.addEventListener('webkitfullscreenchange', paintFullscreen);
+paintFullscreen();
+
 // ---- wiring ---------------------------------------------------------------------------------
 
 controls.onPause = () => {
   if (!session || session.state.over) return;
   paused = !paused;
+  controls.release();
   show(paused ? 'pause' : null);
 };
 document.addEventListener('visibilitychange', () => {
@@ -1284,6 +1356,9 @@ document.addEventListener('click', (e) => {
     }
     case 'who':
       openWho();
+      break;
+    case 'fullscreen':
+      toggleFullscreen();
       break;
     case 'arena':
       if (arena.isHost) renderHost();
@@ -1356,6 +1431,10 @@ window.addEventListener('keydown', (e) => {
     sfx.unlock();
     toggleMusic();
   }
+});
+$('#touch-pause').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  controls.onPause?.();
 });
 $('#ff-btn').addEventListener('click', () => {
   speed = speed === 1 ? 4 : speed === 4 ? 16 : 1;

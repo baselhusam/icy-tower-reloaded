@@ -8,6 +8,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#0b1e3a" />
     <title>Icy Tower Reloaded</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -23,9 +25,15 @@
       </div>
 
       <div id="touch" class="hidden">
-        <div class="pad left" data-input="1">◀</div>
-        <div class="pad right" data-input="2">▶</div>
-        <div class="pad jump" data-input="4">▲</div>
+        <div class="zone stick">
+          <div class="stick-ring"><i class="arr l">◀</i><i class="stick-knob"></i><i class="arr r">▶</i></div>
+          <p class="touch-hint">Slide anywhere here<br />to run ◀ ▶</p>
+        </div>
+        <div class="zone jump">
+          <div class="jump-btn">▲<small>JUMP</small></div>
+          <p class="touch-hint">Tap anywhere here<br />to jump</p>
+        </div>
+        <button class="touch-pause" id="touch-pause" aria-label="Pause"><i></i><i></i></button>
       </div>
 
       <section id="menu" class="title">
@@ -46,6 +54,8 @@
           </svg>
           <div class="logo-ribbon"><span>Reloaded</span></div>
         </header>
+
+        <button id="fs-btn" class="fs-btn hidden" data-action="fullscreen" aria-label="Full screen" title="Full screen">⛶</button>
 
         <button id="arena-bar" class="arena-bar hidden" data-action="arena">
           <i class="live-dot"></i><b id="arena-name">Arena</b><span id="arena-meta"></span>
@@ -108,6 +118,7 @@
         <h2>How to play</h2>
         <ul class="help">
           <li><kbd>←</kbd><kbd>→</kbd> or <kbd>A</kbd><kbd>D</kbd> to run, <kbd>Space</kbd>/<kbd>↑</kbd> to jump. <kbd>Esc</kbd> pauses, <kbd>M</kbd> toggles music.</li>
+          <li><b>On a phone:</b> put your left thumb down anywhere on the left half and slide to run. Tap anywhere on the right half to jump.</li>
           <li><b>Speed is height.</b> The faster you run, the higher you jump.</li>
           <li><b>Bounce off walls</b> in mid-air to keep your speed.</li>
           <li><b>Combos:</b> chain jumps that skip 2+ floors before the combo meter empties. Cash-in = floors².</li>
@@ -181,6 +192,7 @@
         <h2>Paused</h2>
         <div class="buttons">
           <button class="primary" data-action="resume">Resume</button>
+          <button class="fs-toggle hidden" data-action="fullscreen">⛶ Full screen</button>
           <button data-action="quit">Quit to menu</button>
         </div>
       </section>

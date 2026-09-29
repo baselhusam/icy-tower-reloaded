@@ -54,9 +54,6 @@ canvas {
   padding-top: calc(var(--sat) + var(--u) * 30);
   padding-bottom: calc(var(--sab) + var(--u) * 14);
 }
-.fullbleed .pad {
-  bottom: calc(16px + var(--sab));
-}
 .fullbleed #toasts,
 .fullbleed #spectator {
   top: calc(50% - var(--game-h) / 2 + 100px + var(--sat));
@@ -462,42 +459,145 @@ kbd {
   background: rgba(0, 0, 0, 0.5);
 }
 
+/* Touch controls: the left half steers (slide), the right half jumps (tap). The drawn stick and
+   button only show where they are; the whole half of the screen works. */
 #touch {
   position: absolute;
   left: calc(50% - var(--game-w) / 2);
+  top: calc(50% - var(--game-h) / 2);
   width: var(--game-w);
-  bottom: calc(50% - var(--game-h) / 2);
-  height: 140px;
-  pointer-events: none;
+  height: var(--game-h);
+  display: flex;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.pad {
-  position: absolute;
-  bottom: 16px;
-  width: 78px;
-  height: 78px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: 28px;
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.12);
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  pointer-events: auto;
+.zone {
+  position: relative;
+  flex: 1;
   touch-action: none;
 }
-.pad.down {
-  background: rgba(127, 227, 255, 0.4);
+.stick-ring {
+  position: absolute;
+  left: var(--x, max(30%, 80px));
+  top: var(--y, calc(100% - 96px - var(--sab)));
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 132px;
+  height: 62px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  opacity: 0.6;
+  pointer-events: none;
+  transition: opacity 0.15s;
 }
-.pad.left {
-  left: 44px;
+.zone.stick.down .stick-ring {
+  opacity: 1;
 }
-.pad.right {
-  left: 132px;
+.stick-ring .arr {
+  font-style: normal;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.55);
+  transition:
+    color 0.1s,
+    transform 0.1s;
 }
-.pad.jump {
-  right: 44px;
+.stick-ring[data-dir='left'] .arr.l,
+.stick-ring[data-dir='right'] .arr.r {
+  color: var(--gold);
+  transform: scale(1.35);
+}
+.stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  transform: translate(calc(-50% + clamp(-40px, var(--dx, 0px), 40px)), -50%);
+}
+.zone.stick.down .stick-knob {
+  background: rgba(127, 227, 255, 0.5);
+}
+.jump-btn {
+  position: absolute;
+  right: 22px;
+  bottom: calc(50px + var(--sab));
+  display: grid;
+  place-items: center;
+  align-content: center;
   width: 92px;
   height: 92px;
+  border-radius: 50%;
+  font-size: 28px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  opacity: 0.75;
+  pointer-events: none;
+  transition:
+    transform 0.08s,
+    background 0.08s;
+}
+.jump-btn small {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.zone.jump.down .jump-btn {
+  opacity: 1;
+  background: rgba(127, 227, 255, 0.45);
+  transform: scale(0.92);
+}
+.touch-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(150px + var(--sab));
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+#touch.hints .touch-hint {
+  opacity: 0.95;
+}
+#touch.hints .zone.stick {
+  box-shadow: -1px 0 0 rgba(255, 255, 255, 0.25) inset;
+}
+.touch-pause {
+  position: absolute;
+  z-index: 1;
+  top: calc(var(--hud-top, 0px) + var(--wu, 1px) * 94);
+  right: calc((66 - var(--crop, 0)) * var(--wu, 1px) - 19px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+}
+.touch-pause i {
+  width: 4px;
+  height: 13px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.9);
 }
 
 @media (max-width: 520px) {
@@ -1143,7 +1243,7 @@ kbd {
   align-items: center;
   gap: calc(var(--u) * 7);
   width: auto;
-  max-width: calc(100% - var(--u) * 24);
+  max-width: calc(100% - var(--u) * 110); /* clear of the full-screen button */
   padding: calc(var(--u) * 5) calc(var(--u) * 12);
   font-size: calc(var(--u) * 12);
   font-weight: 500;
@@ -1595,4 +1695,28 @@ button.danger {
   width: auto;
   padding: 5px 11px;
   font-size: 12px;
+}
+
+/* Full screen: top-right corner of the title screen, and in the pause menu on phones. */
+.fs-btn {
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--sat) + var(--u) * 10);
+  right: calc(var(--u) * 12);
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 36);
+  height: calc(var(--u) * 36);
+  padding: 0;
+  font-size: calc(var(--u) * 20);
+  line-height: 1;
+  color: #cfe3fa;
+  background: rgba(5, 12, 30, 0.72);
+  border: 1px solid rgba(127, 227, 255, 0.3);
+  border-radius: calc(var(--u) * 10);
+  animation: fade-up 0.5s ease-out 0.2s both;
+}
+.fs-btn.on {
+  color: var(--gold);
+  border-color: var(--gold);
 }
