@@ -583,10 +583,26 @@
   // ---------- Terminal ----------
   const CMDS = [
     {
+      tab: 'arena',
+      cmd: 'npx icy-tower-reloaded',
+      out: [
+        '',
+        '  🐧 <span class="c">Icy Tower Reloaded</span> <span class="d">v0.2.0 · Office Arena</span>',
+        '',
+        '  🎮 Play here        <span class="a">http://localhost:4747</span>',
+        '  🌐 Share with team  <span class="a">http://192.168.1.14:4747</span>',
+        '  📺 Big screen       <span class="a">http://192.168.1.14:4747/tv</span>',
+        '  🔑 Host link        <span class="a">http://192.168.1.14:4747/?admin=x7Qp2mR9aLc4</span>',
+        '  💾 Database         <span class="d">~/.icy-tower-reloaded/arena.db</span>',
+        '',
+        '<span class="d"># everyone on the network opens the share link and picks a climber</span>',
+      ],
+    },
+    {
       tab: 'dev',
       cmd: 'npm run dev',
       out: [
-        '<span class="d">&gt; icy-tower-reloaded@0.1.0 dev</span>',
+        '<span class="d">&gt; icy-tower-reloaded@0.2.0 dev</span>',
         '<span class="d">&gt; vite</span>',
         '',
         '  <span class="ok">VITE v8.3.1</span>  ready in <span class="c">180 ms</span>',
@@ -603,14 +619,17 @@
       out: [
         '<span class="d">&gt; vitest run</span>',
         '',
-        ' <span class="ok">✓</span> engine determinism <span class="d">(4)</span>',
+        ' <span class="ok">✓</span> tests/engine.test.ts <span class="d">(4)</span>',
         '   <span class="ok">✓</span> produces identical games from the same seed and inputs',
-        '   <span class="ok">✓</span> clones are independent and continue identically',
         '   <span class="ok">✓</span> round-trips inputs through the replay encoder and re-verifies the score',
-        '   <span class="ok">✓</span> ends the game when the player falls below the screen',
+        ' <span class="ok">✓</span> tests/arena.test.ts <span class="d">(14)</span>',
+        '   <span class="ok">✓</span> registers players and verifies a submitted run',
+        '   <span class="ok">✓</span> lets anyone pick a climber, and asks for the PIN when there is one',
+        '   <span class="ok">✓</span> removes a climber from every board, and anyone can bring them back',
+        '   <span class="ok">✓</span> runs a week or a month, and no longer',
         '',
-        ' <span class="d">Test Files</span>  <span class="ok">1 passed</span> (1)',
-        '      <span class="d">Tests</span>  <span class="ok">4 passed</span> (4)',
+        ' <span class="d">Test Files</span>  <span class="ok">2 passed</span> (2)',
+        '      <span class="d">Tests</span>  <span class="ok">18 passed</span> (18)',
       ],
     },
     {
@@ -708,7 +727,18 @@
   }, { threshold: 0.3 }).observe(body);
   $$('.term-tab')[0].classList.add('active');
 
-  // ---------- Teams: bracket preview ----------
+  // ---------- Office arena: one-line host command ----------
+  $('#host-copy').addEventListener('click', async (e) => {
+    try {
+      await navigator.clipboard.writeText($('#host-cmd').textContent);
+      e.target.textContent = 'Copied!';
+    } catch {
+      e.target.textContent = 'Press ⌘C';
+    }
+    setTimeout(() => (e.target.textContent = 'Copy'), 1400);
+  });
+
+  // ---------- Office arena: "Who's climbing?" demo ----------
   const DEPTS = [
     ['⚙️', 'Engineering', '#7fe3ff'],
     ['📣', 'Marketing', '#ff8ad8'],
@@ -719,64 +749,66 @@
     ['💰', 'Finance', '#8dffcf'],
     ['🌱', 'People', '#ff9d5c'],
   ];
-  const ROUND_NAMES = ['Quarterfinals', 'Semifinals', 'Final'];
-  let rounds;
-  function resetBracket() {
-    rounds = [DEPTS.map((_, i) => ({ d: i, score: null })), Array(4).fill(null), Array(2).fill(null)];
-    renderBracket();
-    $('#bracket-play').textContent = 'Play round ▶';
-    $('#bracket-foot').textContent = '8 departments · one shared seed per round · best of 3 runs';
+  const esc = (t) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  const ME = { name: 'Maya R.', dept: 0 };
+  const climbers = [
+    { name: 'Omar K.', dept: 4, best: 16904, runs: 42, seen: '3m ago', pin: true },
+    { name: 'Lina S.', dept: 2, best: 15230, runs: 31, seen: '12m ago', pin: false },
+    { name: 'Jonas P.', dept: 3, best: 13977, runs: 18, seen: '1h ago', pin: true },
+    { name: 'Priya N.', dept: 1, best: 12540, runs: 27, seen: '2d ago', pin: false },
+  ];
+  const removed = [];
+  const whoDemo = $('#who-demo');
+  const whoFoot = $('#who-foot');
+  const avatar = (dept) => penguin({ scarf: DEPTS[dept][2], hat: 'office' });
+  function renderWho() {
+    whoDemo.innerHTML = `
+      <button class="who-continue" data-who="continue"><span class="who-av">${avatar(ME.dept)}</span>Continue as ${esc(ME.name)}</button>
+      <ul class="who-rows">${climbers
+        .map(
+          (c, i) =>
+            `<li><button class="who-pick" data-pick="${i}"><span class="who-av">${avatar(c.dept)}</span><span class="who-txt"><b>${esc(c.name)}${c.pin ? ' <i title="Has a PIN">🔒</i>' : ''}</b><small>best ${c.best.toLocaleString()} · ${c.runs} runs · ${c.seen}</small></span></button><button class="who-x" data-x="${i}" aria-label="Remove ${esc(c.name)}">✕</button></li>`,
+        )
+        .join('') || '<li class="who-empty">Nobody else yet.</li>'}</ul>
+      <div class="who-actions">
+        <button class="who-new" data-who="new">＋ New climber</button>
+        ${removed.length ? `<button class="who-trash" data-who="restore">🗑 Recently removed (${removed.length})</button>` : ''}
+      </div>`;
   }
-  const played = (r) => r.every((s) => s && s.score != null);
-  function renderBracket() {
-    const slot = (s, pairWinner) => {
-      if (!s) return '<div class="slot tbd"><span class="nm">TBD</span><span class="sc">–</span></div>';
-      const [ico, name] = DEPTS[s.d];
-      const cls = s.score == null ? '' : pairWinner === s ? ' win' : ' lose';
-      return `<div class="slot${cls}"><span class="nm">${ico} ${name}</span><span class="sc">${s.score == null ? '–' : `F${s.score}`}</span></div>`;
-    };
-    const cols = rounds.map((r, ri) => {
-      const matches = [];
-      for (let m = 0; m < r.length; m += 2) {
-        const a = r[m];
-        const b = r[m + 1];
-        const w = a && b && a.score != null && b.score != null ? (a.score >= b.score ? a : b) : null;
-        matches.push(`<div class="match">${slot(a, w)}${slot(b, w)}</div>`);
-      }
-      return `<div class="round"><span class="round-title">${ROUND_NAMES[ri]}</span><div class="round-m">${matches.join('')}</div></div>`;
-    });
-    const fin = rounds[2];
-    const champ = played(fin) ? (fin[0].score >= fin[1].score ? fin[0] : fin[1]) : null;
-    cols.push(`<div class="champion${champ ? ' won' : ''}"><span class="trophy">🏆</span><b>${champ ? DEPTS[champ.d][1] : 'Champion'}</b><small>${champ ? `Floor ${champ.score}` : 'Friday 17:00'}</small></div>`);
-    $('#bracket').innerHTML = cols.join('');
+  const say = (html) => (whoFoot.innerHTML = html);
+  function restoreLast() {
+    const c = removed.pop();
+    if (!c) return;
+    climbers.push(c);
+    renderWho();
+    say(`♻️ <b>${esc(c.name)}</b> is back, with every score on every board.`);
   }
-  function playRound() {
-    const ri = rounds.findIndex((r) => !played(r));
-    if (ri === -1) return resetBracket();
-    const r = rounds[ri];
-    r.forEach((s) => (s.score = 90 + Math.floor(Math.random() * 260) + ri * 40));
-    const winners = [];
-    let upset = null;
-    for (let m = 0; m < r.length; m += 2) {
-      const [a, b] = [r[m], r[m + 1]];
-      const w = a.score >= b.score ? a : b;
-      const l = w === a ? b : a;
-      winners.push({ d: w.d, score: null });
-      if (!upset || w.score - l.score < upset.gap) upset = { w, l, gap: w.score - l.score };
+  whoDemo.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const d = b.dataset;
+    if (d.who === 'continue') say(`👋 Welcome back, <b>${esc(ME.name)}</b>. One tap and you're climbing.`);
+    else if (d.who === 'new') say('🎉 Pick a name (it has to be unique), add a PIN if you like, then dress up your climber.');
+    else if (d.who === 'restore') restoreLast();
+    else if (d.pick != null) {
+      const c = climbers[+d.pick];
+      if (c.pin) {
+        b.closest('li').classList.remove('shake');
+        void b.offsetWidth;
+        b.closest('li').classList.add('shake');
+        say(`🔒 <b>${esc(c.name)}</b> has a PIN, so the game asks for it before anyone plays as them on a new device.`);
+      } else say(`👋 Playing as <b>${esc(c.name)}</b> on this device. Their scores follow them here.`);
+    } else if (d.x != null) {
+      const [c] = climbers.splice(+d.x, 1);
+      removed.push(c);
+      renderWho();
+      say(`🗑 Removed <b>${esc(c.name)}</b> from every board. <button class="who-undo" id="who-undo">Undo</button> Anyone can restore them for 7 days.`);
     }
-    if (ri < 2) rounds[ri + 1] = winners;
-    renderBracket();
-    const foot = $('#bracket-foot');
-    if (ri === 2) {
-      const champ = r[0].score >= r[1].score ? r[0] : r[1];
-      foot.textContent = `🏆 ${DEPTS[champ.d][1]} take the Frost Cup at floor ${champ.score}. Posted to #general.`;
-      $('#bracket-play').textContent = 'Reset ↺';
-    } else {
-      foot.textContent = `${ROUND_NAMES[ri]} done · closest match: ${DEPTS[upset.w.d][1]} beat ${DEPTS[upset.l.d][1]} by ${upset.gap} floor${upset.gap === 1 ? '' : 's'}`;
-    }
-  }
-  $('#bracket-play').addEventListener('click', playRound);
-  resetBracket();
+  });
+  whoFoot.addEventListener('click', (e) => {
+    if (e.target.id === 'who-undo') restoreLast();
+  });
+  renderWho();
 
   // ---------- Teams: live company leaderboard ----------
   const PEOPLE = [

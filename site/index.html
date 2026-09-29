@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1e3a" />
     <title>Icy Tower Reloaded</title>
-    <meta name="description" content="A browser remake of the classic Icy Tower: combos, six zones, a daily ghost race, verified replays and an AI that plays it. Team tournaments coming soon." />
+    <meta name="description" content="A browser remake of the classic Icy Tower: combos, six zones, a daily ghost race, verified replays and an AI that plays it. Host it on your office network for shared leaderboards and tournaments. Created by Basel Husam." />
+    <meta name="author" content="Basel Husam" />
     <meta property="og:title" content="Icy Tower Reloaded" />
     <meta property="og:description" content="Run fast, jump high, chain combos and don't fall off the bottom. Play free in your browser." />
     <meta property="og:image" content="media/title.png" />
@@ -33,7 +34,7 @@
         <a href="#zones">Zones</a>
         <a href="#modes">Modes</a>
         <a href="#commands">Commands</a>
-        <a href="#teams" class="nav-teams">Teams <i>soon</i></a>
+        <a href="#teams" class="nav-teams">Office arena <i>new</i></a>
       </nav>
       <a class="btn btn-small btn-ice" href="play/">▶ Play</a>
     </header>
@@ -176,6 +177,17 @@
               <li><b>Keep moving.</b> The tower scrolls from floor 5 and speeds up every 30 seconds.</li>
               <li><b>Pickups.</b> 💎 +25 · 🚀 rocket jump · ❄️ freeze the scroll · 🧲 gem magnet</li>
             </ul>
+            <div class="phone-tip">
+              <div class="phone-halves" aria-hidden="true">
+                <span><i>◀ ▶</i>slide</span>
+                <span><i>▲</i>tap</span>
+              </div>
+              <div>
+                <h4>📱 On a phone</h4>
+                <p>Slide your left thumb anywhere on the left half to run, tap anywhere on the right half to jump. No tiny buttons to aim for.</p>
+                <p>Hit <b>⛶</b> for full screen, or <b>Add to Home Screen</b> to play without browser bars.</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -250,7 +262,7 @@
       <section class="section" id="commands" data-floor="150">
         <header class="sec-head">
           <p class="eyebrow">Floor 150 · Under the hood</p>
-          <h2>Four commands, zero magic</h2>
+          <h2>A few commands, zero magic</h2>
           <p>The game is a pure function of <code>(seed, inputs)</code>. That makes it testable, replayable, and easy for bots to play.</p>
         </header>
 
@@ -287,56 +299,61 @@
         </div>
       </section>
 
-      <!-- TEAMS / ENTERPRISE -->
+      <!-- OFFICE ARENA -->
       <section class="section teams" id="teams" data-floor="250">
         <div class="teams-glow" aria-hidden="true"></div>
         <header class="sec-head">
-          <p class="eyebrow gold">Floor 250 · Coming soon</p>
-          <h2>Icy Tower <span class="for-teams">for Teams</span></h2>
-          <p>Office tournaments where the scores can't be faked. Departments climb the same seeded tower, and every run is re-simulated on the server before it counts.</p>
+          <p class="eyebrow gold">Floor 250 · Play with your team</p>
+          <h2>Icy Tower <span class="for-teams">for your office</span></h2>
+          <p>One person runs a single command. Everyone else on the network opens the link, picks their climber and plays. No accounts, nothing to install, and the scores can't be faked.</p>
         </header>
 
+        <div class="host-cmd">
+          <span class="p">$</span> <code id="host-cmd">npx icy-tower-reloaded</code>
+          <button class="term-copy" id="host-copy" aria-label="Copy command">Copy</button>
+        </div>
+
         <div class="t-grid">
-          <div class="t-panel bracket-panel">
+          <div class="t-panel who-panel">
             <div class="t-panel-head">
               <div>
-                <p class="t-kicker">Preview · Friday Frost Cup</p>
-                <h3>Department bracket</h3>
+                <p class="t-kicker">Every visit starts here</p>
+                <h3>Who's climbing?</h3>
               </div>
-              <button class="btn btn-small btn-ice" id="bracket-play">Play round ▶</button>
+              <span class="verified">no sign-up</span>
             </div>
-            <div class="bracket" id="bracket"></div>
-            <p class="t-foot" id="bracket-foot">8 departments · one daily seed per round · best of 3 runs</p>
+            <div class="who-demo" id="who-demo"></div>
+            <p class="t-foot" id="who-foot">Try it: pick a climber, or remove one with ✕ and bring them back.</p>
           </div>
 
           <div class="t-panel board-panel">
             <div class="t-panel-head">
               <div>
-                <p class="t-kicker"><span class="live-dot"></span> Live · this week</p>
-                <h3>Company leaderboard</h3>
+                <p class="t-kicker"><span class="live-dot"></span> Live · Friday Cup</p>
+                <h3>Arena leaderboard</h3>
               </div>
               <span class="verified">✔ replay-verified</span>
             </div>
             <ol class="lboard" id="lboard"></ol>
-            <div class="season"><span>🧣 Season prize: the golden scarf</span><span>Resets Monday 09:00</span></div>
+            <div class="season"><span>🏆 Friday Cup · 6d 23h left</span><span>Same tower for everyone · 3 attempts</span></div>
           </div>
-          <div class="t-features">
-            <div class="tf"><span class="tf-ico">🏢</span><h4>Private company league</h4><p>Your own leaderboards, seasons and hall of fame, visible only to your organisation.</p></div>
-            <div class="tf"><span class="tf-ico">🏆</span><h4>Scheduled tournaments</h4><p>Brackets, round-robins or all-hands sprints, all on one shared seed so it's the same tower for everyone.</p></div>
-            <div class="tf"><span class="tf-ico">🛡️</span><h4>Scores you can trust</h4><p>Clients submit replays, not scores. The server re-runs each one and stores only the verified result.</p></div>
-            <div class="tf"><span class="tf-ico">🔐</span><h4>SSO and admin</h4><p>Sign in with your work account. Admins manage teams, events and prizes from one dashboard.</p></div>
-            <div class="tf"><span class="tf-ico">💬</span><h4>Slack and Teams bot</h4><p>Round results, upsets and new records posted to the channel as they happen.</p></div>
-            <div class="tf"><span class="tf-ico">🧣</span><h4>Your brand, your scarf</h4><p>Company colours on the penguins, department badges and custom trophies.</p></div>
-          </div>
+        </div>
 
+        <div class="t-features">
+          <div class="tf"><span class="tf-ico">🐧</span><h4>Pick your climber</h4><p>Continue as yourself, choose your name from the list, or make a new climber. Names are unique, and your scores follow you to any machine.</p></div>
+          <div class="tf"><span class="tf-ico">🔐</span><h4>Optional PIN</h4><p>Lock your climber with a 4-digit PIN, so nobody else can play as you from another desk.</p></div>
+          <div class="tf"><span class="tf-ico">🤝</span><h4>No admin needed</h4><p>Anyone can remove a climber, and anyone can restore them for 7 days. Everybody sees who removed whom, with an Undo.</p></div>
+          <div class="tf"><span class="tf-ico">🏆</span><h4>Tournaments</h4><p>From a 5-minute sprint to a month-long cup. One tower for everyone, an optional attempt limit, and the winner announced live.</p></div>
+          <div class="tf"><span class="tf-ico">📺</span><h4>Big-screen board</h4><p>Put <code>/tv</code> on the office TV: standings with a countdown, who's climbing right now, and a feed of new records.</p></div>
+          <div class="tf"><span class="tf-ico">🛡️</span><h4>Scores you can trust</h4><p>Players send replays, not scores. The server re-runs every run before it counts, so nobody can post a fake one.</p></div>
         </div>
 
         <div class="t-cta">
           <div>
-            <h3>Want this at your company?</h3>
-            <p>Teams is on the roadmap. Tell us what your tournament would look like.</p>
+            <h3>Want it hosted for your company?</h3>
+            <p>SSO, a Slack bot and company leagues are on the roadmap. Tell us what you'd need.</p>
           </div>
-          <a class="btn btn-gold" href="https://github.com/baselhusam/icy-tower-reloaded/issues/new?title=Teams%20%2F%20Enterprise%20interest&labels=enterprise">Register interest on GitHub →</a>
+          <a class="btn btn-gold" href="https://github.com/baselhusam/icy-tower-reloaded/issues/new?title=Hosted%20%2F%20Teams%20interest&labels=enterprise">Register interest on GitHub →</a>
         </div>
       </section>
 
@@ -348,11 +365,11 @@
         </header>
         <ol class="roadmap">
           <li><span class="rm-state done">Shipped</span><h4>Deterministic engine and replays</h4><p>Every run stored as <code>{ seed, inputs }</code> in a few KB.</p></li>
-          <li><span class="rm-state">Next</span><h4>Global leaderboard</h4><p>Submit a replay, the server runs <code>simulateReplay()</code> and stores the verified score.</p></li>
+          <li><span class="rm-state done">Shipped</span><h4>Office arena</h4><p>Shared, replay-verified leaderboards, tournaments up to a month long and a live TV board, from one <code>npx</code> command.</p></li>
+          <li><span class="rm-state done">Shipped · 0.2</span><h4>Climbers and phones</h4><p>Pick yourself on any device, optional PINs, shared removal with undo, and touch controls made for thumbs.</p></li>
+          <li><span class="rm-state">Next</span><h4>Global leaderboard</h4><p>A hosted board anyone can post to, with the same server-side replay check.</p></li>
           <li><span class="rm-state">Next</span><h4>AI agent arena</h4><p>HTTP and WebSocket API so LLMs and Python RL bots can play headless, with their own board.</p></li>
-          <li><span class="rm-state">Planned</span><h4>Shareable ghosts</h4><p>A link that carries a replay, so friends race each other's runs.</p></li>
-          <li><span class="rm-state">Planned</span><h4>Seasons and wardrobe</h4><p>Weekly seasons, scarves and hats, and async races on the same seed.</p></li>
-          <li><span class="rm-state gold">Soon</span><h4>Icy Tower for Teams</h4><p>Company leagues and employee tournaments.</p></li>
+          <li><span class="rm-state gold">Planned</span><h4>Ghosts, seasons, wardrobe</h4><p>Shareable ghost links, weekly seasons, and scarves and hats bought with 💎.</p></li>
         </ol>
       </section>
 
@@ -360,13 +377,18 @@
         <div class="final-peng" data-peng="pengu"></div>
         <h2>Ready to climb?</h2>
         <a class="btn btn-gold btn-big" href="play/">▶ Play Icy Tower Reloaded</a>
-        <p>Free, in your browser. Works with a keyboard or touch.</p>
+        <p>Free, in your browser. Works with a keyboard, or with your thumbs on a phone.</p>
+        <a class="byline" href="https://baselhusam.com" target="_blank" rel="noopener">
+          <span class="byline-peng" data-peng="pengu" aria-hidden="true"></span>
+          <span><small>Created by</small><b>Basel Husam</b></span>
+          <span class="byline-go" aria-hidden="true">↗</span>
+        </a>
       </section>
     </main>
 
     <footer class="footer">
       <span>Icy Tower Reloaded · a fan remake built with TypeScript, Vite and Canvas 2D</span>
-      <a href="https://github.com/baselhusam/icy-tower-reloaded">GitHub</a>
+      <span class="footer-links">Created by <a href="https://baselhusam.com" target="_blank" rel="noopener">Basel Husam</a> · <a href="https://github.com/baselhusam/icy-tower-reloaded">GitHub</a> · <a href="https://www.npmjs.com/package/icy-tower-reloaded">npm</a></span>
     </footer>
 
     <script src="site.js"></script>
