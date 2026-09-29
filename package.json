@@ -1,6 +1,6 @@
 {
   "name": "icy-tower-reloaded",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Icy Tower in the browser, plus a zero-dependency LAN arena: shared leaderboards, tournaments and a live TV board for your office.",
   "keywords": [
     "icy-tower",
