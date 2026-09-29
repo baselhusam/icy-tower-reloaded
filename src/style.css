@@ -868,6 +868,60 @@ kbd {
   color: #04122a;
 }
 
+/* Watch the AI: a small side door, so the play modes get the spotlight */
+.ai-link {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 9);
+  width: auto;
+  align-self: flex-start;
+  margin: calc(var(--u) * -8) 0 calc(var(--u) * 16) calc(var(--u) * 30);
+  padding: calc(var(--u) * 4) calc(var(--u) * 12) calc(var(--u) * 4) calc(var(--u) * 4);
+  font-weight: 500;
+  text-align: left;
+  color: #cfe3fa;
+  background: rgba(10, 24, 52, 0.6);
+  border: 1px solid rgba(127, 227, 255, 0.18);
+  border-radius: 999px;
+  animation: fade-up 0.5s ease-out 0.6s both;
+}
+.ai-link:hover {
+  background: rgba(20, 44, 88, 0.85);
+}
+.ai-link img {
+  flex: none;
+  width: calc(var(--u) * 30);
+  height: calc(var(--u) * 30);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, rgba(127, 227, 255, 0.28), rgba(10, 24, 52, 0.9) 72%);
+}
+.ai-text b {
+  display: block;
+  font-size: calc(var(--u) * 13);
+  line-height: 1.15;
+}
+.ai-text small {
+  display: block;
+  font-size: calc(var(--u) * 10.5);
+  color: var(--muted);
+}
+.ai-go {
+  font-size: calc(var(--u) * 10);
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+.ai-link.selected {
+  color: #fff;
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 1px var(--gold) inset,
+    0 0 18px rgba(255, 226, 122, 0.25);
+}
+.ai-link.selected .ai-go {
+  color: var(--gold);
+  transform: translateX(calc(var(--u) * 3));
+}
+
 /* Secondary actions */
 .dock {
   display: flex;

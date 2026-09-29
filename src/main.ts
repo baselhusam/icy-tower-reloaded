@@ -123,7 +123,8 @@ function renderMenu() {
     ? `Best ${daily.score.toLocaleString()} · new tower in ${untilNextDaily()}`
     : `Same tower for everyone · ends in ${untilNextDaily()}`;
   const ai = bestOn('ai', true);
-  $('#ai-meta').textContent = ai ? `Frosty's record: floor ${ai.floor}` : 'Frosty, the lookahead bot';
+  $('#ai-meta').textContent = ai ? `the lookahead AI · record floor ${ai.floor}` : 'the lookahead AI';
+  $<HTMLImageElement>('#ai-avatar').src ||= avatarURL(FROSTY_LOOK, 64);
 
   $('#ach-count').textContent = `${Object.keys(profile.achievements).length}/${ACHIEVEMENTS.length}`;
   $('#mute').innerHTML = `<span class="ico">${profile.muted ? '🔇' : '🔊'}</span><span>${profile.muted ? 'Muted' : 'Sound'}</span>`;
@@ -135,8 +136,9 @@ function renderMenu() {
 
 // Title menu: one selection shared by keyboard and mouse, like a console menu.
 let menuIndex = 0;
-const menuEntries = () => [...document.querySelectorAll<HTMLElement>('#menu .item:not(.hidden), #menu .dock-btn')];
-const modeCount = () => document.querySelectorAll('#menu .item:not(.hidden)').length;
+// Up/down walks the modes and then the small "Watch Frosty" link; left/right walks the dock.
+const menuEntries = () => [...document.querySelectorAll<HTMLElement>('#menu .item:not(.hidden), #menu .ai-link, #menu .dock-btn')];
+const modeCount = () => document.querySelectorAll('#menu .item:not(.hidden), #menu .ai-link').length;
 
 function selectMenu(i: number, sound = true) {
   const entries = menuEntries();
@@ -1375,7 +1377,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.code === 'Escape' && ['help', 'board', 'achievements', 'wardrobe', 'host'].some(isOpen)) renderMenu();
   else if (e.code === 'Escape' && isOpen('who') && arena.me) renderMenu();
 });
-document.querySelectorAll<HTMLElement>('#menu .item, #menu .dock-btn').forEach((el) =>
+document.querySelectorAll<HTMLElement>('#menu .item, #menu .ai-link, #menu .dock-btn').forEach((el) =>
   el.addEventListener('pointerenter', () => selectMenu(menuEntries().indexOf(el))),
 );
 setInterval(() => {
