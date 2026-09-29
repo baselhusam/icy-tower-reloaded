@@ -1277,6 +1277,8 @@ type FullscreenEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void
 const fsDoc = document as FullscreenDoc;
 const fsRoot = document.documentElement as FullscreenEl;
 const canFullscreen = !!(fsRoot.requestFullscreen || fsRoot.webkitRequestFullscreen);
+// Inside someone else's page (the landing page's phone frame), full screen isn't ours to take.
+const embedded = window.self !== window.top;
 const installed = matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
 const isFullscreen = () => !!(fsDoc.fullscreenElement ?? fsDoc.webkitFullscreenElement);
 
@@ -1303,8 +1305,9 @@ async function toggleFullscreen() {
 
 function paintFullscreen() {
   const full = isFullscreen();
-  // Worth offering on phones and anywhere the browser supports it, unless we're already an app.
-  const offer = !installed && (canFullscreen || isTouch);
+  // Worth offering on phones and anywhere the browser supports it, unless we're already an app
+  // or embedded in another page.
+  const offer = !installed && !embedded && (canFullscreen || isTouch);
   const btn = $('#fs-btn');
   btn.classList.toggle('hidden', !offer);
   btn.classList.toggle('on', full);
