@@ -17,7 +17,7 @@ Run fast, jump high, chain combos and don't fall off the bottom.
 
 <img src="docs/media/climb.gif" width="300" alt="Gameplay: the penguin climbs the Ice Cave, chains combos and unlocks achievements" />
 &nbsp;&nbsp;
-<img src="docs/media/title.png" width="300" alt="Title screen with game modes and player card" />
+<img src="docs/media/title.png" width="300" alt="Title screen on an office arena: a live tournament, the game modes, Watch Frosty play and the player card" />
 
 </div>
 
