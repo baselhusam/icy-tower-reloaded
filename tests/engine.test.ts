@@ -49,7 +49,7 @@ describe('engine determinism', () => {
     const verified = simulateReplay({ version: 1, seed: 7, inputs: encoded, ticks: rec.ticks, score: s.score, floor: s.floor });
     expect(verified.score).toBe(s.score);
     expect(s.floor).toBeGreaterThan(20);
-  });
+  }, 30_000); // 40 seconds of Frosty planning: ~2 s locally, slower on shared CI runners
 
   it('ends the game when the player falls below the screen', () => {
     const s = createGame(5);
