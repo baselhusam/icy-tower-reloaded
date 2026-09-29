@@ -32,7 +32,7 @@ npx icy-tower-reloaded
 ```
 
 ```text
-  🐧 Icy Tower Reloaded v0.1.0 · Office Arena
+  🐧 Icy Tower Reloaded v0.2.0 · Office Arena
 
   🎮 Play here        http://localhost:4747
   🌐 Share with team  http://192.168.1.14:4747
@@ -45,7 +45,7 @@ Everyone else on the same network opens the **Share with team** link. Nobody els
 
 - **Climbers.** Every visit starts on *Who's climbing?*: continue as yourself, pick your climber from the list or make a new one. Names are unique, and your scores follow your climber to any machine. Add an optional 4-digit PIN so nobody else can play as you. There's no admin: anyone can remove a climber (they vanish from every board), and anyone can restore them from *Recently removed* for 7 days, after which they're deleted for good.
 - **Shared leaderboards.** All-time Endless, today's Daily Tower, each tournament, and a **Characters** board that shows which climber holds each record and how often each one gets picked.
-- **Tournaments.** The host starts one from the 🎛️ panel (click the green arena pill on the title screen) or from the terminal. Everyone gets the same tower, a countdown and an optional limit on attempts. When the clock runs out, runs still in progress end with *Time's up!* and count as they stand. A few seconds later the winner is announced to everyone.
+- **Tournaments.** The host starts one from the 🎛️ panel (click the green arena pill on the title screen) or from the terminal. They run from a 5-minute sprint to a month-long cup. Everyone gets the same tower, a countdown and an optional limit on attempts. When the clock runs out, runs still in progress end with *Time's up!* and count as they stand. A few seconds later the winner is announced to everyone.
 - **Live.** The title screen shows who's online and who's climbing. During a run, rivals on the same board appear as name tags on the tower wall at the floor they've reached. Toasts pop up when someone makes the podium.
 - **Big-screen board** at `/tv` for the office TV: tournament standings with a countdown, who's climbing right now (with live floor bars), all-time top 5, character records and a feed of new bests.
 - **Scores can't be faked.** The client never sends a score. It sends the replay (seed + inputs), and the server re-runs the deterministic engine to get the real result. A 10-minute run verifies in about 20 ms. The server hands out the seeds, so you can't shop for an easy tower. It also rejects runs that are longer than the time since they started.
@@ -92,6 +92,8 @@ Then open **http://localhost:5173** and press <kbd>Enter</kbd>.
 | Run | <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd> | Slide a thumb anywhere on the left half |
 | Jump | <kbd>Space</kbd> or <kbd>↑</kbd> | Tap anywhere on the right half |
 | Pause | <kbd>Esc</kbd> or <kbd>P</kbd> | ❚❚ under the speed clock |
+
+On a phone, tap ⛶ on the title screen to go full screen. On iPhone, use **Share → Add to Home Screen** instead: the game then opens from its own icon with no browser bars.
 
 - **Speed is height.** The faster you run, the higher you jump.
 - **Bounce off walls** in mid-air to keep your speed.
@@ -143,7 +145,7 @@ Every run is also recorded as a **replay**. You can watch it back from the game-
 
 **Frosty** is a lookahead planner. Every few ticks it clones the game, simulates 90 short action plans, and picks the one that ends up highest and safest. It needs no training, because the engine is deterministic and cheap to clone.
 
-Watch it from the menu at ×1, ×4 or ×16 speed. It also plays the attract-mode demo behind the title screen. Headless, it regularly gets past floor 2,000:
+Watch it from the **Watch Frosty play** link under the play modes, at ×1, ×4 or ×16 speed. It also plays the attract-mode demo behind the title screen. Headless, it regularly gets past floor 2,000:
 
 ```text
 $ npm run bot -- 4 7
@@ -203,3 +205,11 @@ See [`scripts/bot.ts`](scripts/bot.ts) for a headless benchmark loop. In the bro
 ## License
 
 [MIT](LICENSE)
+
+---
+
+<div align="center">
+
+Authored by **[Basel Husam](https://baselhusam.com)**
+
+</div>
