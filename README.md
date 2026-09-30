@@ -204,12 +204,24 @@ See [`scripts/bot.ts`](scripts/bot.ts) for a headless benchmark loop. In the bro
 
 ## License
 
-[MIT](LICENSE)
+Released under the [MIT License](LICENSE). You're welcome to use, modify and share the game, including in commercial projects. Keep the copyright and license notice with your copy.
+
+## Contributing
+
+Bug fixes, new agents, gameplay ideas and documentation improvements are welcome.
+
+- **Found a bug?** [Open an issue](https://github.com/baselhusam/icy-tower-reloaded/issues/new) with steps to reproduce it, your browser or Node.js version, and a screenshot or replay if it helps.
+- **Have an idea?** [Start an issue](https://github.com/baselhusam/icy-tower-reloaded/issues) before a larger change so we can agree on the direction.
+- **Ready to build?** Fork the repository, follow the [development setup](#develop), and submit a pull request describing what changed and how you checked it. Run `npm test` and `npm run build` before submitting code changes.
 
 ---
 
 <div align="center">
 
-Authored by **[Basel Husam](https://baselhusam.com)**
+🐧 **Icy Tower Reloaded**
+
+Created by **[Basel Husam](https://baselhusam.com)**
+
+[Play in your browser](https://baselhusam.github.io/icy-tower-reloaded/) · [Report a bug](https://github.com/baselhusam/icy-tower-reloaded/issues/new) · [Get it on npm](https://www.npmjs.com/package/icy-tower-reloaded)
 
 </div>
