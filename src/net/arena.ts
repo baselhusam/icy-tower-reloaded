@@ -193,8 +193,20 @@ export class ArenaClient {
     this.request('POST', `runs/${runId}/progress`, { floor, score }).catch(() => {});
   }
 
-  finishRun(runId: string, replay: Replay): Promise<FinishedRun> {
-    return this.request<FinishedRun>('POST', `runs/${runId}/finish`, { replay });
+  /** Tries again if the network drops the request, so a Wi-Fi blip doesn't cost the run. */
+  async finishRun(runId: string, replay: Replay): Promise<FinishedRun> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await this.request<FinishedRun>('POST', `runs/${runId}/finish`, { replay });
+      } catch (err) {
+        // A retry that finds the run already submitted means the first try landed and only its answer got lost.
+        if (attempt && err instanceof ApiError && err.status === 409 && /already submitted/.test(err.message)) {
+          throw new ApiError(409, 'Your run reached the arena. Check Scores for your rank.');
+        }
+        if (err instanceof ApiError || attempt >= 2) throw err;
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+      }
+    }
   }
 
   board(key: string, limit = 50): Promise<BoardEntry[]> {

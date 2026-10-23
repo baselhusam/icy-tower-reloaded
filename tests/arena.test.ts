@@ -154,6 +154,27 @@ describe('arena server', () => {
 
     const { data: list } = await api<Tournament[]>('/api/tournaments');
     expect(list[0].leader?.name).toBe('Lina');
+
+    // A second climber; without ?limit the board shows everyone, not just the leader.
+    const { data: other } = await api<PlayerAuth>('/api/players', { body: { name: 'Ziad' } });
+    const { data: run2 } = await api<StartedRun>('/api/runs', { body: { mode: 'tournament', tournamentId: t.id }, auth: other });
+    backdate(run2.runId);
+    await api(`/api/runs/${run2.runId}/finish`, { body: { replay: playGame(run2.seed) }, auth: other });
+    const { data: board } = await api<BoardEntry[]>(`/api/boards/${encodeURIComponent(t.board)}`);
+    expect(board.map((e) => e.name).sort()).toEqual(['Lina', 'Ziad']);
+  });
+
+  it('catches a (re)connecting stream up on the tournaments it may have missed', async () => {
+    const t = arena.store.createTournament({ name: 'Missed Cup', startsAt: Date.now(), endsAt: Date.now() + 60_000, maxAttempts: null });
+    const ctrl = new AbortController();
+    const res = await fetch(`${base}/api/live`, { signal: ctrl.signal });
+    const reader = res.body!.getReader();
+    let buf = '';
+    while (!buf.includes('"type":"presence"')) buf += new TextDecoder().decode((await reader.read()).value);
+    ctrl.abort();
+    const first = JSON.parse(buf.split('\n').find((l) => l.startsWith('data: '))!.slice(6)) as ServerEvent;
+    expect(first.type).toBe('tournaments');
+    expect(first.type === 'tournaments' && first.tournaments.some((x) => x.id === t.id)).toBe(true);
   });
 
   it('only lets the host manage tournaments', async () => {

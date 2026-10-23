@@ -91,7 +91,7 @@ const parsePin = (raw: unknown): string | null => {
 };
 
 const num = (v: unknown, min: number, max: number, fallback: number) => {
-  const n = Number(v);
+  const n = v == null || v === '' ? NaN : Number(v); // Number(null) and Number('') are 0, not "missing"
   return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback;
 };
 
@@ -212,7 +212,9 @@ export function createArena(opts: ArenaOptions) {
 
   route('GET', '/api/live', ({ req, res, url }) => {
     const player = url.searchParams.get('player');
-    live.subscribe(req, res, player && player.length <= 64 ? player : null);
+    // EventSource reconnects on its own after a dropped connection or an arena restart, so each
+    // (re)connect starts with the current tournaments in case it missed one starting or ending.
+    live.subscribe(req, res, player && player.length <= 64 ? player : null, [{ type: 'tournaments', tournaments: tournamentsNow() }]);
     return STREAMING;
   });
 

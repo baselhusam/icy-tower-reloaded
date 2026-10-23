@@ -673,23 +673,26 @@ function makeAttract(): Session {
   };
 }
 
+/** A tournament's clock ends every run still in the air. */
+function checkTimeUp(now: number) {
+  const cup = session?.tournament;
+  if (!session || !cup || session.state.over || arena.now() < cup.endsAt) return;
+  session.state.over = true;
+  session.timeUp = true;
+  session.overAt = now;
+  paused = false;
+  show(null);
+  renderer.announce("TIME'S UP!", cup.name);
+  sfx.gameOver();
+}
+
 function frame(now: number) {
   requestAnimationFrame(frame);
   const dt = Math.min(100, now - last);
   last = now;
   const active = session ?? attract;
 
-  // A tournament's clock ends every run still in the air.
-  const cup = session?.tournament;
-  if (session && cup && !session.state.over && arena.now() >= cup.endsAt) {
-    session.state.over = true;
-    session.timeUp = true;
-    session.overAt = now;
-    paused = false;
-    show(null);
-    renderer.announce("TIME'S UP!", cup.name);
-    sfx.gameOver();
-  }
+  checkTimeUp(now);
 
   if (active && !paused) {
     acc += dt * (session ? speed : 1);
@@ -1472,6 +1475,12 @@ setInterval(() => {
 // Tournament countdowns.
 setInterval(() => {
   if (!arena.connected) return;
+  // requestAnimationFrame stops in a background tab, so end and hand in tournament runs from here
+  // too: the arena only takes them for a minute after the clock runs out.
+  if (document.hidden && session?.tournament) {
+    checkTimeUp(performance.now());
+    if (session.state.over) finish(session);
+  }
   if (!session && isOpen('menu')) renderCup();
   if (isOpen('board') && boardTab === 'cup') updateBoardHead();
 }, 1000);

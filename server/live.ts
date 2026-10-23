@@ -27,7 +27,8 @@ export class LiveHub {
     );
   }
 
-  subscribe(req: IncomingMessage, res: ServerResponse, playerId: string | null) {
+  /** `catchUp` goes to this client first, so one that reconnects after missing events is current again. */
+  subscribe(req: IncomingMessage, res: ServerResponse, playerId: string | null, catchUp: ServerEvent[] = []) {
     res.writeHead(200, {
       'content-type': 'text/event-stream; charset=utf-8',
       'cache-control': 'no-store',
@@ -37,6 +38,7 @@ export class LiveHub {
     res.write('retry: 3000\n\n');
     const client: Client = { res, playerId };
     this.clients.add(client);
+    for (const ev of catchUp) this.send(client, ev);
     this.send(client, { type: 'presence', presence: this.presence() });
     this.schedulePresence();
     req.on('close', () => {
